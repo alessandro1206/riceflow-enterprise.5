@@ -1,0 +1,42 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer utilities {
+  .glass {
+    @apply bg-white/60 backdrop-blur-2xl border border-white/60 shadow-xl;
+  }
+
+  .glass-dark {
+    @apply bg-emerald-900/70 backdrop-blur-2xl border-r border-emerald-500/20 shadow-2xl;
+  }
+
+  .glass-panel {
+    @apply bg-white/50 backdrop-blur-xl border border-white/50 shadow-md;
+  }
+
+  .glass-input {
+    @apply bg-white/40 backdrop-blur-md border border-white/70 focus:bg-white/70 transition-all shadow-inner;
+  }
+}
+
+body {
+  background: linear-gradient(135deg, #FDFBF7 0%, #F5F0E6 25%, #E8EBE4 50%, #EEDFD0 75%, #F5EAE1 100%);
+  background-size: 400% 400%;
+  animation: gradientBg 20s ease infinite;
+  min-height: 100vh;
+}
+
+@keyframes gradientBg {
+  0% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0% 50%;
+  }
+}
