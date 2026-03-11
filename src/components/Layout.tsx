@@ -11,7 +11,6 @@ import {
   Tag,
   LogOut,
   ShieldCheck,
-  Signature,
 } from 'lucide-react';
 
 interface LayoutProps {
@@ -55,11 +54,6 @@ const Layout: React.FC<LayoutProps> = ({
       id: 'prices',
       label: 'Daftar Harga',
       icon: <Tag className="w-5 h-5" />,
-    },
-    {
-      id: 'sign',
-      label: 'Digital Approval',
-      icon: <Signature className="w-5 h-5" />,
     },
     {
       id: 'accounting',

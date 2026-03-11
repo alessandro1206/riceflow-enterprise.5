@@ -159,22 +159,22 @@ export const Dashboard = ({ state, setActiveTab }: any) => {
             <h3 className="text-3xl font-black mb-4 tracking-tighter">AI Market Insights</h3>
             
             {state.showFullAnalysis ? (
-              <div className="space-y-6 animate-in fade-in slide-in-from-right-10 duration-500">
-                <div className="p-6 bg-white/5 rounded-3xl border border-white/10">
+              <div className="space-y-6">
+                <div className="p-6 bg-white/10 rounded-3xl border border-white/20">
                   <h4 className="text-emerald-400 font-black text-xs uppercase tracking-widest mb-3">Analisis Jawa Timur</h4>
-                  <p className="text-sm text-slate-300 leading-relaxed font-medium">
+                  <p className="text-sm text-slate-100 leading-relaxed font-medium">
                     Panen raya di Kediri & Nganjuk meningkatkan suplai Gabah Kering Giling (GKG) sebesar 15%. Harga diprediksi terkoreksi Rp 200/kg.
                   </p>
                 </div>
-                <div className="p-6 bg-white/5 rounded-3xl border border-white/10">
+                <div className="p-6 bg-white/10 rounded-3xl border border-white/20">
                   <h4 className="text-amber-400 font-black text-xs uppercase tracking-widest mb-3">Rekomendasi Strategis</h4>
-                  <p className="text-sm text-slate-300 leading-relaxed font-medium">
+                  <p className="text-sm text-slate-100 leading-relaxed font-medium">
                     Segera tingkatkan penyerapan gabah minggu ini sebelum puncak musim hujan yang dapat menurunkan kualitas kadar air.
                   </p>
                 </div>
                 <button 
                   onClick={() => setActiveTab('dashboard_brief')}
-                  className="text-emerald-400 font-black text-xs uppercase tracking-widest hover:text-white transition-colors"
+                  className="bg-white/10 hover:bg-white/20 text-white px-6 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all"
                 >
                   ← KEMBALI KE RINGKASAN
                 </button>
