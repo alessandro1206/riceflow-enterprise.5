@@ -49,6 +49,28 @@ const INITIAL_STATE = {
     { code: '61003', name: 'Biaya Perawatan Mesin', type: 'EXPENSE' },
   ],
   journal: [],
+  schedules: [
+    {
+      id: 'S1',
+      date: new Date().getDate(),
+      nopol: 'L 9876 BM',
+      driver: 'Budi Santoso',
+      destination: 'Banjarmasin (Pelabuhan)',
+      vessel: 'KM Dharma Rucitra',
+      tons: 25,
+      material: 'Beras Premium',
+    },
+    {
+      id: 'S2',
+      date: new Date().getDate() + 1,
+      nopol: 'B 1234 XY',
+      driver: 'Agus Triono',
+      destination: 'Sampit (Gudang)',
+      vessel: 'KM Satya Kencana',
+      tons: 20,
+      material: 'Beras Medium',
+    }
+  ],
 };
 
 export default function App() {
@@ -238,6 +260,32 @@ export default function App() {
       return { ...prev, inventory: newInv };
     });
   };
+  
+  const onAddSchedule = (schedule: any) => {
+    setState((prev: any) => ({
+      ...prev,
+      schedules: [...prev.schedules, { ...schedule, id: `S${Date.now()}` }]
+    }));
+  };
+
+  const onDeleteSchedule = (id: string) => {
+    setState((prev: any) => ({
+      ...prev,
+      schedules: prev.schedules.filter((s: any) => s.id !== id)
+    }));
+  };
+
+  const handleTabChange = (tab: string) => {
+    if (tab === 'dashboard_full') {
+      setState((prev: any) => ({ ...prev, showFullAnalysis: true }));
+      setActiveTab('dashboard');
+    } else if (tab === 'dashboard_brief') {
+      setState((prev: any) => ({ ...prev, showFullAnalysis: false }));
+      setActiveTab('dashboard');
+    } else {
+      setActiveTab(tab);
+    }
+  };
 
   if (!isLoggedIn) {
     return <Login onLogin={handleLogin} />;
@@ -246,7 +294,7 @@ export default function App() {
   return (
     <Layout
       activeTab={activeTab}
-      setActiveTab={setActiveTab}
+      setActiveTab={handleTabChange}
       onSaveData={() => { }}
       onLogout={handleLogout}
     >
@@ -270,6 +318,8 @@ export default function App() {
         <TradingPanel
           state={state}
           onSaleSubmit={(order: any) => onSaleSubmit(order, true)}
+          onAddSchedule={onAddSchedule}
+          onDeleteSchedule={onDeleteSchedule}
         />
       )}
       {activeTab === 'prices' && (

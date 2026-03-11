@@ -150,19 +150,48 @@ export const Dashboard = ({ state, setActiveTab }: any) => {
           </div>
         </div>
 
-        <div className="bg-[#1E293B] p-10 rounded-[40px] text-white flex flex-col justify-center relative overflow-hidden">
+        <div className="bg-[#1E293B] p-10 rounded-[40px] text-white flex flex-col justify-center relative overflow-hidden transition-all duration-500">
           <div className="absolute top-[-20%] right-[-10%] w-72 h-72 bg-emerald-500/10 blur-[100px] rounded-full"></div>
           <div className="relative z-10">
             <div className="bg-emerald-500/10 text-emerald-400 p-4 rounded-3xl w-fit mb-8">
               <Sparkles className="w-8 h-8" />
             </div>
             <h3 className="text-3xl font-black mb-4 tracking-tighter">AI Market Insights</h3>
-            <p className="text-slate-400 leading-relaxed font-medium mb-10">
-              Harga gabah di wilayah Jawa Timur diprediksi akan stabil dalam 7 hari ke depan. Disarankan untuk memprioritaskan inventory "Beras Premium" untuk meningkatkan margin profit.
-            </p>
-            <button className="bg-emerald-600 hover:bg-emerald-500 text-white px-8 py-4 rounded-2xl font-black text-sm transition-all shadow-2xl shadow-emerald-900/40">
-              LIHAT ANALISA LENGKAP
-            </button>
+            
+            {state.showFullAnalysis ? (
+              <div className="space-y-6 animate-in fade-in slide-in-from-right-10 duration-500">
+                <div className="p-6 bg-white/5 rounded-3xl border border-white/10">
+                  <h4 className="text-emerald-400 font-black text-xs uppercase tracking-widest mb-3">Analisis Jawa Timur</h4>
+                  <p className="text-sm text-slate-300 leading-relaxed font-medium">
+                    Panen raya di Kediri & Nganjuk meningkatkan suplai Gabah Kering Giling (GKG) sebesar 15%. Harga diprediksi terkoreksi Rp 200/kg.
+                  </p>
+                </div>
+                <div className="p-6 bg-white/5 rounded-3xl border border-white/10">
+                  <h4 className="text-amber-400 font-black text-xs uppercase tracking-widest mb-3">Rekomendasi Strategis</h4>
+                  <p className="text-sm text-slate-300 leading-relaxed font-medium">
+                    Segera tingkatkan penyerapan gabah minggu ini sebelum puncak musim hujan yang dapat menurunkan kualitas kadar air.
+                  </p>
+                </div>
+                <button 
+                  onClick={() => setActiveTab('dashboard_brief')}
+                  className="text-emerald-400 font-black text-xs uppercase tracking-widest hover:text-white transition-colors"
+                >
+                  ← KEMBALI KE RINGKASAN
+                </button>
+              </div>
+            ) : (
+              <>
+                <p className="text-slate-400 leading-relaxed font-medium mb-10">
+                  Harga gabah di wilayah Jawa Timur diprediksi akan stabil dalam 7 hari ke depan. Disarankan untuk memprioritaskan inventory "Beras Premium" untuk meningkatkan margin profit.
+                </p>
+                <button 
+                  onClick={() => setActiveTab('dashboard_full')}
+                  className="bg-emerald-600 hover:bg-emerald-500 text-white px-8 py-4 rounded-2xl font-black text-sm transition-all shadow-2xl shadow-emerald-900/40"
+                >
+                  LIHAT ANALISA LENGKAP
+                </button>
+              </>
+            )}
           </div>
         </div>
       </div>

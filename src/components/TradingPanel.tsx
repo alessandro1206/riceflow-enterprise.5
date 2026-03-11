@@ -13,42 +13,37 @@ import {
   MapPin,
 } from 'lucide-react';
 
-export const TradingPanel = ({ state, _onSaleSubmit }: any) => {
+export const TradingPanel = ({ state, onAddSchedule, onDeleteSchedule }: any) => {
   const [selectedDate, setSelectedDate] = useState(new Date().getDate());
   const [isExpanded, setIsExpanded] = useState(false);
   const [showSuratJalan, setShowSuratJalan] = useState(false);
-  const [schedules, setSchedules] = useState<any[]>([
-    {
-      id: 'S1',
-      date: new Date().getDate(),
-      nopol: 'L 9876 BM',
-      driver: 'Budi Santoso',
-      destination: 'Banjarmasin (Pelabuhan)',
-      vessel: 'KM Dharma Rucitra',
-      tons: 25,
-      material: 'Beras Premium',
-    },
-    {
-      id: 'S2',
-      date: new Date().getDate() + 1,
-      nopol: 'B 1234 XY',
-      driver: 'Agus Triono',
-      destination: 'Sampit (Gudang)',
-      vessel: 'KM Satya Kencana',
-      tons: 20,
-      material: 'Beras Medium',
-    }
-  ]);
-
+  const [showAddForm, setShowAddForm] = useState(false);
   const [currentOrder, setCurrentOrder] = useState<any>(null);
+  
+  const [newSchedule, setNewSchedule] = useState({
+    nopol: '',
+    driver: '',
+    destination: '',
+    vessel: '',
+    tons: 0,
+    material: 'Beras Premium',
+  });
 
-  const selectedSchedules = schedules.filter(s => s.date === selectedDate);
+  const schedules = state.schedules || [];
+  const selectedSchedules = schedules.filter((s: any) => s.date === selectedDate);
 
-  const handleDeleteSchedule = (id: string) => {
-    if (confirm('Hapus jadwal pengiriman ini?')) {
-      setSchedules(schedules.filter(s => s.id !== id));
-      if (currentOrder?.id === id) setShowSuratJalan(false);
-    }
+  const handleCreateSchedule = () => {
+    if (!newSchedule.nopol || !newSchedule.driver) return alert("Nopol dan Driver harus diisi!");
+    onAddSchedule({ ...newSchedule, date: selectedDate });
+    setShowAddForm(false);
+    setNewSchedule({
+      nopol: '',
+      driver: '',
+      destination: '',
+      vessel: '',
+      tons: 0,
+      material: 'Beras Premium',
+    });
   };
 
   return (
@@ -72,7 +67,7 @@ export const TradingPanel = ({ state, _onSaleSubmit }: any) => {
 
       <div className={`grid grid-cols-1 ${isExpanded ? 'lg:grid-cols-1' : 'lg:grid-cols-3'} gap-8 transition-all duration-500`}>
         {/* CALENDAR VIEW */}
-        <div className={`${isExpanded ? 'h-[600px]' : 'h-fit'} glass-panel p-8 no-print transition-all`}>
+        <div className={`${isExpanded ? 'h-fit' : 'h-fit'} glass-panel p-8 no-print transition-all`}>
           <div className="flex justify-between items-center mb-8">
             <h3 className="font-black text-slate-800 uppercase text-sm tracking-[0.2em]">
               Maret 2026
@@ -84,28 +79,39 @@ export const TradingPanel = ({ state, _onSaleSubmit }: any) => {
               </div>
             </div>
           </div>
-          <div className={`grid grid-cols-7 gap-3 ${isExpanded ? 'h-[450px]' : ''}`}>
+          <div className="grid grid-cols-7 gap-3">
             {['MIN', 'SEN', 'SEL', 'RAB', 'KAM', 'JUM', 'SAB'].map(day => (
               <div key={day} className="text-center text-[10px] font-black text-slate-300 pb-2">{day}</div>
             ))}
             {Array.from({ length: 31 }).map((_, i) => {
               const day = i + 1;
-              const hasSchedule = schedules.some(s => s.date === day);
+              const daySchedules = schedules.filter((s: any) => s.date === day);
+              const hasSchedule = daySchedules.length > 0;
+              
               return (
                 <button
                   key={i}
                   onClick={() => setSelectedDate(day)}
-                  className={`aspect-square rounded-2xl text-sm font-black transition-all flex flex-col items-center justify-center relative group
+                  className={`aspect-square min-h-[60px] rounded-2xl text-sm font-black transition-all flex flex-col items-start p-3 relative group
                       ${selectedDate === day
                       ? 'bg-emerald-600 text-white shadow-2xl shadow-emerald-900/20 scale-105 z-10'
                       : 'bg-white/50 text-slate-400 hover:bg-white hover:text-emerald-700 hover:shadow-lg'
                     }`}
                 >
-                  {day}
+                  <span>{day}</span>
                   {hasSchedule && (
-                    <div
-                      className={`absolute bottom-2 w-1.5 h-1.5 rounded-full ${selectedDate === day ? 'bg-amber-400' : 'bg-emerald-500 shadow-sm shadow-emerald-500/50'}`}
-                    ></div>
+                    <div className="mt-1 w-full space-y-1">
+                      {isExpanded ? (
+                        daySchedules.slice(0, 2).map((s: any, idx: number) => (
+                           <div key={idx} className={`text-[8px] truncate px-1 rounded ${selectedDate === day ? 'bg-emerald-500 text-white' : 'bg-emerald-100 text-emerald-700'}`}>
+                             {s.material.split(' ')[0]} {s.tons}T
+                           </div>
+                        ))
+                      ) : (
+                        <div className={`w-full h-1 rounded-full ${selectedDate === day ? 'bg-amber-400' : 'bg-emerald-500'}`}></div>
+                      )}
+                      {isExpanded && daySchedules.length > 2 && <div className="text-[8px] opacity-50">+{daySchedules.length - 2} more</div>}
+                    </div>
                   )}
                 </button>
               );
@@ -126,13 +132,88 @@ export const TradingPanel = ({ state, _onSaleSubmit }: any) => {
                     Terdapat {selectedSchedules.length} pengiriman terdaftar
                   </p>
                 </div>
-                <button className="bg-emerald-600 text-white p-3 rounded-xl shadow-lg hover:scale-105 transition-transform">
-                  <Plus className="w-5 h-5" />
+                <button 
+                  onClick={() => setShowAddForm(!showAddForm)}
+                  className={`p-3 rounded-xl shadow-lg transition-all ${showAddForm ? 'bg-red-500 text-white' : 'bg-emerald-600 text-white hover:scale-105'}`}
+                >
+                  {showAddForm ? <X className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
                 </button>
               </div>
 
+              {showAddForm && (
+                <div className="mb-8 p-8 bg-slate-50 rounded-[32px] border border-slate-200 animate-in slide-in-from-top-4">
+                  <h4 className="font-black text-slate-800 text-xs uppercase tracking-widest mb-6">Tambah Jadwal Pengiriman</h4>
+                  <div className="grid grid-cols-2 gap-6 mb-6">
+                    <div>
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2 block">Material & QTY (Ton)</label>
+                      <div className="flex space-x-2">
+                        <select 
+                          className="flex-1 p-4 glass-input font-bold text-sm"
+                          value={newSchedule.material}
+                          onChange={e => setNewSchedule({...newSchedule, material: e.target.value})}
+                        >
+                          <option value="Beras Premium">Beras Premium</option>
+                          <option value="Beras Medium">Beras Medium</option>
+                          <option value="Sekam">Sekam</option>
+                        </select>
+                        <input 
+                          type="number"
+                          className="w-24 p-4 glass-input font-black text-center"
+                          placeholder="TON"
+                          value={newSchedule.tons || ''}
+                          onChange={e => setNewSchedule({...newSchedule, tons: Number(e.target.value)})}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2 block">Tujuan & Kapal</label>
+                      <div className="flex space-x-2">
+                        <input 
+                          className="flex-1 p-4 glass-input font-bold"
+                          placeholder="Tujuan"
+                          value={newSchedule.destination}
+                          onChange={e => setNewSchedule({...newSchedule, destination: e.target.value})}
+                        />
+                         <input 
+                          className="flex-1 p-4 glass-input font-bold"
+                          placeholder="Kapal"
+                          value={newSchedule.vessel}
+                          onChange={e => setNewSchedule({...newSchedule, vessel: e.target.value})}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-6">
+                    <div>
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2 block">Nomor Polisi</label>
+                      <input 
+                        className="w-full p-4 glass-input font-black uppercase"
+                        placeholder="L 1234 AB"
+                        value={newSchedule.nopol}
+                        onChange={e => setNewSchedule({...newSchedule, nopol: e.target.value.toUpperCase()})}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2 block">Nama Sopir</label>
+                      <input 
+                        className="w-full p-4 glass-input font-bold"
+                        placeholder="Input Nama"
+                        value={newSchedule.driver}
+                        onChange={e => setNewSchedule({...newSchedule, driver: e.target.value})}
+                      />
+                    </div>
+                  </div>
+                  <button 
+                    onClick={handleCreateSchedule}
+                    className="w-full mt-8 bg-slate-900 text-white py-4 rounded-2xl font-black shadow-xl hover:bg-emerald-600 transition-all"
+                  >
+                    SIMPAN JADWAL
+                  </button>
+                </div>
+              )}
+
               <div className="space-y-4">
-                {selectedSchedules.map((s) => (
+                {selectedSchedules.map((s: any) => (
                   <div key={s.id} className="group bg-white/50 border border-white/60 p-6 rounded-3xl hover:border-emerald-500/30 transition-all">
                     <div className="flex justify-between items-start">
                       <div className="flex items-start space-x-4">
@@ -140,9 +221,9 @@ export const TradingPanel = ({ state, _onSaleSubmit }: any) => {
                           <Ship className="w-6 h-6 text-emerald-600" />
                         </div>
                         <div>
-                          <p className="font-black text-slate-800 text-lg uppercase leading-none">{s.vessel}</p>
+                          <p className="font-black text-slate-800 text-lg uppercase leading-none">{s.vessel || 'TANPA KAPAL'}</p>
                           <div className="flex items-center text-slate-400 text-xs font-bold mt-2">
-                            <MapPin className="w-3 h-3 mr-1" /> {s.destination}
+                            <MapPin className="w-3 h-3 mr-1" /> {s.destination || 'Belum diatur'}
                           </div>
                         </div>
                       </div>
@@ -157,7 +238,7 @@ export const TradingPanel = ({ state, _onSaleSubmit }: any) => {
                           <FileText className="w-5 h-5" />
                         </button>
                         <button 
-                          onClick={() => handleDeleteSchedule(s.id)}
+                          onClick={() => onDeleteSchedule(s.id)}
                           className="p-3 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors"
                         >
                           <Trash2 className="w-5 h-5" />
@@ -167,8 +248,8 @@ export const TradingPanel = ({ state, _onSaleSubmit }: any) => {
                     
                     <div className="grid grid-cols-3 gap-6 mt-6 pt-6 border-t border-white/40">
                       <div>
-                        <p className="text-[10px] font-black text-slate-400 uppercase">Kuantitas</p>
-                        <p className="font-black text-lg text-emerald-700">{s.tons} TON</p>
+                        <p className="text-[10px] font-black text-slate-400 uppercase">Item & Kuantitas</p>
+                        <p className="font-black text-sm text-emerald-700">{s.material} - {s.tons} TON</p>
                       </div>
                       <div>
                         <p className="text-[10px] font-black text-slate-400 uppercase">Driver</p>
