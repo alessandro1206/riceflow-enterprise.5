@@ -74,6 +74,10 @@ const INITIAL_STATE = {
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [user, setUser] = useState<any>(() => {
+    const saved = localStorage.getItem('riceflow_user');
+    return saved ? JSON.parse(saved) : null;
+  });
   const [isLoggedIn, setIsLoggedIn] = useState(() => {
     return localStorage.getItem('riceflow_auth') === 'true';
   });
@@ -115,14 +119,18 @@ export default function App() {
     localStorage.setItem('riceflow_v13_closing', JSON.stringify(state));
   }, [state]);
 
-  const handleLogin = () => {
+  const handleLogin = (userData: any) => {
+    setUser(userData);
     setIsLoggedIn(true);
     localStorage.setItem('riceflow_auth', 'true');
+    localStorage.setItem('riceflow_user', JSON.stringify(userData));
   };
 
   const handleLogout = () => {
+    setUser(null);
     setIsLoggedIn(false);
     localStorage.removeItem('riceflow_auth');
+    localStorage.removeItem('riceflow_user');
   };
 
   // --- ACCOUNTING AUTOMATION ENGINE ---
@@ -296,9 +304,10 @@ export default function App() {
       setActiveTab={handleTabChange}
       onSaveData={() => { }}
       onLogout={handleLogout}
+      user={user}
     >
       {activeTab === 'dashboard' && (
-        <Dashboard state={state} setActiveTab={handleTabChange} />
+        <Dashboard state={state} setActiveTab={handleTabChange} user={user} />
       )}
       {activeTab === 'production' && (
         <ProductionPanel

@@ -19,6 +19,7 @@ interface LayoutProps {
   setActiveTab: (tab: string) => void;
   onSaveData: () => void;
   onLogout: () => void;
+  user: any;
 }
 
 const Layout: React.FC<LayoutProps> = ({
@@ -26,6 +27,7 @@ const Layout: React.FC<LayoutProps> = ({
   activeTab,
   setActiveTab,
   onLogout,
+  user,
 }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -93,6 +95,15 @@ const Layout: React.FC<LayoutProps> = ({
               BUMI MAS INFRASTRUCTURE
             </span>
           </div>
+        </div>
+
+        {/* USER PROFILE INFO */}
+        <div className="px-8 mt-6">
+           <div className="p-4 bg-white/5 rounded-2xl border border-white/10">
+              <p className="text-[10px] font-black text-emerald-500/50 uppercase tracking-widest mb-1">Authenticated As</p>
+              <p className="text-sm font-black text-white truncate">{user?.name || 'Administrator'}</p>
+              <p className="text-[9px] font-bold text-amber-400/60 uppercase tracking-tighter mt-1">{user?.role || 'System Access'}</p>
+           </div>
         </div>
 
         <nav className="flex-1 mt-8 px-6 space-y-3">

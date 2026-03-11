@@ -2,8 +2,14 @@ import React, { useState } from 'react';
 import { Lock, User, Wheat, ArrowRight, ShieldCheck } from 'lucide-react';
 
 interface LoginProps {
-  onLogin: () => void;
+  onLogin: (userData: { name: string; role: string }) => void;
 }
+
+const USERS = [
+  { username: 'admin', password: 'admin123', name: 'Amich', role: 'Super Admin' },
+  { username: 'budi', password: 'budi123', name: 'Budi Santoso', role: 'Operator' },
+  { username: 'agus', password: 'agus123', name: 'Agus Triono', role: 'Supervisor' },
+];
 
 export const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const [username, setUsername] = useState('');
@@ -18,8 +24,9 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
 
     // Simulated login logic
     setTimeout(() => {
-      if (username === 'admin' && password === 'admin123') {
-        onLogin();
+      const user = USERS.find(u => u.username === username && u.password === password);
+      if (user) {
+        onLogin({ name: user.name, role: user.role });
       } else {
         setError('Invalid credentials. Please try again.');
         setLoading(false);

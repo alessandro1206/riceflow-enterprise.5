@@ -17,11 +17,13 @@ import {
   ArrowRight,
 } from 'lucide-react';
 
-export const Dashboard = ({ state, setActiveTab }: any) => {
+export const Dashboard = ({ state, setActiveTab, user }: any) => {
   const totalGabah = state.piles.reduce(
     (acc: number, p: any) => acc + p.currentWeight,
     0
   );
+  // ... (rest of stock calculation remains same)
+
   const totalBeras = state.inventory.reduce(
     (acc: number, i: any) => acc + i.quantity,
     0
@@ -68,7 +70,7 @@ export const Dashboard = ({ state, setActiveTab }: any) => {
       <header className="flex justify-between items-end">
         <div>
           <h2 className="text-4xl font-black text-slate-900 tracking-tight leading-none mb-2 capitalize">
-            Selamat Datang, <span className="text-emerald-600">Amich</span>
+            Selamat Datang, <span className="text-emerald-600">{user?.name || 'Administrator'}</span>
           </h2>
           <p className="text-slate-500 font-medium">
             RiceFlow <span className="text-emerald-700 font-bold">Enterprise</span> • Monitoring Multi-Business Unit
