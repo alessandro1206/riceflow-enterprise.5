@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RiceFlow Enterprise v13 - Panduan Visual & Tutorial</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --emerald-600: #059669;
+            --emerald-700: #047857;
+            --slate-900: #0f172a;
+            --slate-600: #475569;
+        }
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            line-height: 1.6;
+            color: var(--slate-900);
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px;
+            background: #f8fafc;
+        }
+        .page {
+            background: white;
+            padding: 60px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+            border-radius: 40px;
+            margin-bottom: 40px;
+        }
+        header {
+            text-align: center;
+            margin-bottom: 60px;
+            border-bottom: 4px solid var(--emerald-600);
+            padding-bottom: 30px;
+        }
+        h1 { font-weight: 800; font-size: 3.5rem; letter-spacing: -0.04em; margin-bottom: 10px; }
+        h2 { color: var(--emerald-600); font-weight: 800; font-size: 1.8rem; margin-top: 40px; border-left: 8px solid var(--emerald-600); padding-left: 20px; }
+        .badge { background: var(--slate-900); color: white; padding: 5px 15px; border-radius: 10px; font-size: 0.8rem; font-weight: 800; text-transform: uppercase; }
+        .screenshot {
+            width: 100%;
+            border-radius: 24px;
+            margin: 30px 0;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.1);
+            border: 1px solid rgba(0,0,0,0.05);
+        }
+        .feature-grid { display: grid; grid-cols: 1; gap: 40px; }
+        .footer { text-align: center; font-size: 0.8rem; color: var(--slate-600); margin-top: 60px; }
+        @media print {
+            body { background: white; padding: 0; }
+            .page { box-shadow: none; border-radius: 0; margin: 0; padding: 40px; }
+            .no-print { display: none; }
+        }
+        .step { background: #f1f5f9; padding: 20px; border-radius: 20px; margin: 10px 0; border-left: 4px solid var(--emerald-600); }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <header>
+            <span class="badge">Edisi Eksklusif - Rogojampi</span>
+            <h1>RiceFlow <span style="color:var(--emerald-600)">Enterprise</span></h1>
+            <p style="font-weight:600; color:var(--slate-600)">Panduan Visual & Tutorial Operasional Terpadu</p>
+        </header>
+
+        <section>
+            <h2>I. Dashboard & Kecerdasan AI</h2>
+            <p>Pusat kendali bisnis Anda. Di sini Anda dapat melihat kesehatan operasional secara instan tanpa perlu mengecek tumpukan kertas laporan.</p>
+            <img src="dashboard_mockup_1773240239974.png" alt="Dashboard View" class="screenshot">
+            <ul>
+                <li><strong>AI Market Insights:</strong> Memberikan rekomendasi harga berdasarkan data pasar Jawa Timur.</li>
+                <li><strong>Stok Otomatis:</strong> Angka gabah dan beras yang Anda lihat selalu merupakan data paling update dari lapangan.</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>II. Manajemen Produksi (PP BUMI MAS)</h2>
+            <p>Ubah input gabah menjadi profit beras dengan sistem giling yang akurat.</p>
+            <img src="production_milling_mockup_1773240276083.png" alt="Production View" class="screenshot">
+            <div class="step">
+                <strong>Cara Kerja:</strong> Pilih tumpukan gabah → Masukkan berat input → Pilih hasil (Beras/Katul) → Sistem menghitung rendemen secara otomatis.
+            </div>
+        </section>
+
+        <section>
+            <h2>III. Surat Jalan & Logistik (Trading)</h2>
+            <p>Cetak dokumen profesional dalam hitungan detik dengan branding Rogojampi Banyuwangi.</p>
+            <img src="surat_jalan_mockup_1773240257670.png" alt="Surat Jalan View" class="screenshot">
+            <div class="step">
+                <strong>Fitur Unggulan:</strong> Tanda tangan digital otomatis, stempel resmi Bumi Mas, dan alamat yang sudah tersetting ke Rogojampi.
+            </div>
+        </section>
+
+        <div class="footer">
+            <p>&copy; 2026 RiceFlow Enterprise for Bumi Mas Group. Developed by Antigravity AI.</p>
+            <p class="no-print" style="color:var(--emerald-600); font-weight:800; cursor:pointer;" onclick="window.print()">[ Klik di sini untuk Cetak ke PDF ]</p>
+        </div>
+    </div>
+</body>
+</html>
