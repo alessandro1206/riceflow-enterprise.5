@@ -3,15 +3,10 @@ import { Lock, User, Wheat, ArrowRight, ShieldCheck } from 'lucide-react';
 
 interface LoginProps {
   onLogin: (userData: { name: string; role: string }) => void;
+  userList: any[];
 }
 
-const USERS = [
-  { username: 'admin', password: 'admin123', name: 'Amich', role: 'Super Admin' },
-  { username: 'budi', password: 'budi123', name: 'Budi Santoso', role: 'Operator' },
-  { username: 'agus', password: 'agus123', name: 'Agus Triono', role: 'Supervisor' },
-];
-
-export const Login: React.FC<LoginProps> = ({ onLogin }) => {
+export const Login: React.FC<LoginProps> = ({ onLogin, userList }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -24,7 +19,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
 
     // Simulated login logic
     setTimeout(() => {
-      const user = USERS.find(u => u.username === username && u.password === password);
+      const user = userList.find(u => u.username === username && u.password === password);
       if (user) {
         onLogin({ name: user.name, role: user.role });
       } else {

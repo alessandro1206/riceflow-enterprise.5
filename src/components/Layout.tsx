@@ -11,6 +11,7 @@ import {
   Tag,
   LogOut,
   ShieldCheck,
+  Settings,
 } from 'lucide-react';
 
 interface LayoutProps {
@@ -62,7 +63,25 @@ const Layout: React.FC<LayoutProps> = ({
       label: 'Pusat Akuntansi',
       icon: <BookOpen className="w-5 h-5" />,
     },
+    {
+      id: 'settings',
+      label: 'Setelan Akses',
+      icon: <Settings className="w-5 h-5" />,
+    },
   ];
+
+  const handleTabClick = (tabId: string) => {
+    if (tabId === 'settings') {
+      const pin = prompt('Masukkan PIN Keamanan untuk akses Setelan:');
+      if (pin === '120610') {
+        setActiveTab(tabId);
+      } else if (pin !== null) {
+        alert('PIN Salah! Akses ditolak.');
+      }
+      return;
+    }
+    setActiveTab(tabId);
+  };
 
   return (
     <div className="min-h-screen bg-transparent flex flex-col md:flex-row font-sans text-stone-800">
@@ -110,11 +129,8 @@ const Layout: React.FC<LayoutProps> = ({
           {navItems.map((item) => (
             <button
               key={item.id}
-              onClick={() => {
-                setActiveTab(item.id);
-                setIsMobileMenuOpen(false);
-              }}
-              className={`w-full flex items-center space-x-4 px-5 py-4 rounded-[20px] transition-all duration-300 font-bold text-sm ${activeTab === item.id
+              onClick={() => handleTabClick(item.id)}
+              className={`w-full flex items-center gap-4 px-6 py-4 rounded-2xl transition-all group duration-300 font-bold text-sm ${activeTab === item.id
                 ? 'bg-gradient-to-r from-emerald-500/30 to-emerald-500/10 text-white shadow-xl translate-x-1 border border-emerald-400/20 backdrop-blur-md'
                 : 'hover:bg-white/5 text-emerald-100/60 hover:text-white hover:translate-x-1'
                 }`}

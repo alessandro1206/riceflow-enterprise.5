@@ -6,6 +6,7 @@ import { TradingPanel } from './components/TradingPanel';
 import { DirectSalesPanel } from './components/DirectSalesPanel';
 import { AccountingPanel } from './components/AccountingPanel';
 import { PricePanel } from './components/PricePanel';
+import { UserManagementPanel } from './components/UserManagementPanel';
 import { Login } from './components/Login';
 
 const INITIAL_STATE = {
@@ -70,6 +71,11 @@ const INITIAL_STATE = {
       material: 'Beras Medium',
     }
   ],
+  userList: [
+    { username: 'admin', password: 'admin123', name: 'Amich', role: 'Super Admin' },
+    { username: 'budi', password: 'budi123', name: 'Budi Santoso', role: 'Operator' },
+    { username: 'agus', password: 'agus123', name: 'Agus Triono', role: 'Supervisor' },
+  ],
 };
 
 export default function App() {
@@ -131,6 +137,20 @@ export default function App() {
     setIsLoggedIn(false);
     localStorage.removeItem('riceflow_auth');
     localStorage.removeItem('riceflow_user');
+  };
+
+  const onAddUser = (userData: any) => {
+    setState((prev: any) => ({
+      ...prev,
+      userList: [...prev.userList, userData]
+    }));
+  };
+
+  const onRemoveUser = (username: string) => {
+    setState((prev: any) => ({
+      ...prev,
+      userList: prev.userList.filter((u: any) => u.username !== username)
+    }));
   };
 
   // --- ACCOUNTING AUTOMATION ENGINE ---
@@ -295,7 +315,7 @@ export default function App() {
   };
 
   if (!isLoggedIn) {
-    return <Login onLogin={handleLogin} />;
+    return <Login onLogin={handleLogin} userList={state.userList} />;
   }
 
   return (
@@ -335,6 +355,13 @@ export default function App() {
       )}
       {activeTab === 'accounting' && (
         <AccountingPanel state={state} onYearEndClose={onYearEndClose} />
+      )}
+      {activeTab === 'settings' && (
+        <UserManagementPanel 
+          userList={state.userList} 
+          onAddUser={onAddUser} 
+          onRemoveUser={onRemoveUser} 
+        />
       )}
     </Layout>
   );
