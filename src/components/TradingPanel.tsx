@@ -307,7 +307,7 @@ export const TradingPanel = ({ state, onAddSchedule, onDeleteSchedule }: any) =>
                   Pabrik Penggilingan Padi & Perdagangan Beras
                 </p>
                 <p className="text-[10px] text-slate-400 uppercase tracking-widest mt-1">
-                  Surabaya, Jawa Timur - Indonesia
+                  Rogojampi, Banyuwangi - Jawa Timur
                 </p>
               </div>
               <div className="text-right border-l-2 pl-10 h-24 flex flex-col justify-center">
@@ -391,6 +391,7 @@ export const TradingPanel = ({ state, onAddSchedule, onDeleteSchedule }: any) =>
               <div>
                 <h1 className="text-4xl font-black text-slate-900 tracking-tighter">PP BUMI MAS</h1>
                 <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-2">Pabrik Penggilingan Padi & Perdagangan Beras</p>
+                <p className="text-[10px] text-slate-400 uppercase tracking-widest mt-1">Rogojampi, Banyuwangi - Jawa Timur</p>
               </div>
               <div className="text-right border-l-2 pl-10 h-24 flex flex-col justify-center">
                 <h2 className="text-2xl font-black uppercase text-slate-900 tracking-tighter">SURAT JALAN</h2>

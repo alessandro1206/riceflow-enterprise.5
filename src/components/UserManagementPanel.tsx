@@ -8,7 +8,7 @@ interface UserManagementPanelProps {
 }
 
 export const UserManagementPanel: React.FC<UserManagementPanelProps> = ({
-  userList,
+  userList = [],
   onAddUser,
   onRemoveUser,
 }) => {

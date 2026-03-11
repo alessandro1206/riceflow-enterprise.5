@@ -89,7 +89,15 @@ export default function App() {
   });
   const [state, setState] = useState(() => {
     const saved = localStorage.getItem('riceflow_v13_closing');
-    return saved ? JSON.parse(saved) : INITIAL_STATE;
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      // Ensure userList exists (for backward compatibility with old local storage)
+      if (!parsed.userList) {
+        parsed.userList = INITIAL_STATE.userList;
+      }
+      return parsed;
+    }
+    return INITIAL_STATE;
   });
 
   // --- THE CLOUD CONNECTION ---
