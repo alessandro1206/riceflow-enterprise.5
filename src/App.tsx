@@ -6,6 +6,7 @@ import { TradingPanel } from './components/TradingPanel';
 import { DirectSalesPanel } from './components/DirectSalesPanel';
 import { AccountingPanel } from './components/AccountingPanel';
 import { PricePanel } from './components/PricePanel';
+import { SignPanel } from './components/SignPanel';
 import { Login } from './components/Login';
 
 const INITIAL_STATE = {
@@ -273,6 +274,9 @@ export default function App() {
       )}
       {activeTab === 'prices' && (
         <PricePanel state={state} onUpdatePrice={onUpdatePrice} />
+      )}
+      {activeTab === 'sign' && (
+        <SignPanel />
       )}
       {activeTab === 'accounting' && (
         <AccountingPanel state={state} onYearEndClose={onYearEndClose} />
