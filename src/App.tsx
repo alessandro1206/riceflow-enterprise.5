@@ -298,7 +298,7 @@ export default function App() {
       onLogout={handleLogout}
     >
       {activeTab === 'dashboard' && (
-        <Dashboard state={state} setActiveTab={setActiveTab} />
+        <Dashboard state={state} setActiveTab={handleTabChange} />
       )}
       {activeTab === 'production' && (
         <ProductionPanel
