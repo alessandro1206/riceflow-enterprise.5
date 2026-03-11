@@ -13,7 +13,16 @@ Modul utama untuk pemantauan bisnis secara makro.
 
 ---
 
-### II. Modul Produksi (PP BUMI MAS)
+### II. Jembatan Timbang (Smart Weighbridge)
+Modul infrastruktur cerdas yang terhubung langsung dengan perangkat keras timbangan dan kamera ALPR.
+*   **Otomasi Kamera (ALPR)**: Sistem secara otomatis mengenali Plat Nomor kendaraan melalui kamera Dahua. Cukup klik tombol kamera untuk mengisi data Nopol secara instan.
+*   **Live Scale Reader**: Data berat Bruto diambil secara real-time dari mesin timbangan fisik menggunakan teknologi Electron bridge.
+*   **Kalkulasi Netto Otomatis**: Sistem menghitung berat bersih (Bruto - Tara) secara akurat tanpa perlu kalkulator manual.
+*   **Cetak Tiket Timbang**: Hasilkan struk bukti timbang yang profesional untuk sopir hanya dengan satu klik.
+
+---
+
+### III. Modul Produksi (PP BUMI MAS)
 Mengelola jantung operasional pabrik: Proses Penggilingan (Milling).
 *   **Manajemen Tumpukan Gabah (Piles)**: Melacak stok gabah berdasarkan jenis (GKG/GKP) di setiap tumpukan. Sistem akan mengupdate sisa berat otomatis setelah giling.
 *   **Otomasi Inventori**: Setiap kilo gabah yang digiling akan dikonversi menjadi produk beras (Premium/Medium) atau produk sampingan (Katul/Menir/Sekam).
@@ -22,7 +31,7 @@ Mengelola jantung operasional pabrik: Proses Penggilingan (Milling).
 
 ---
 
-### III. Modul Logistik & Trading (CV. TRADING MAKMUR)
+### IV. Modul Logistik & Trading (CV. TRADING MAKMUR)
 Pusat distribusi dan pengiriman antar pulau.
 *   **Smart Calendar (Jadwal Kapal)**: Kalender interaktif yang menampilkan seluruh jadwal keberangkatan truk dan kapal. Gunakan fitur "Expand" untuk melihat detail muatan langsung di grid kalender.
 *   **Form Penjadwalan Cepat**: Input data pengiriman (Nopol, Driver, Kapal, Tujuan) hanya dalam hitungan detik menggunakan tombol "+".
@@ -34,7 +43,7 @@ Pusat distribusi dan pengiriman antar pulau.
 
 ---
 
-### IV. Modul Penjualan Langsung (Retail)
+### V. Modul Penjualan Langsung (Retail)
 Mengelola penjualan eceran atau ritel langsung dari pabrik.
 *   **Antarmuka Cepat**: Dirancang untuk kemudahan input transaksi tunai.
 *   **Manajemen Pelanggan**: Integrasi data pelanggan tetap untuk mempercepat proses check-out.
@@ -42,7 +51,7 @@ Mengelola penjualan eceran atau ritel langsung dari pabrik.
 
 ---
 
-### V. Pusat Akuntansi & Keuangan
+### VI. Pusat Akuntansi & Keuangan
 Audit keuangan tanpa ribet dan tanpa perlu ahli akuntansi manual.
 *   **Jurnal Otomatis**: Aplikasi ini menggunakan mesin akuntansi internal. Setiap kali Anda mencatat produksi atau penjualan, sistem secara *diam-diam* membuat jurnal debit/kredit yang akurat.
 *   **Laporan Laba Rugi (P&L)**: Lihat laba bersih usaha Anda secara instan kapan saja. Laporan dipisahkan berdasarkan kategori pendapatan dan beban.
@@ -50,7 +59,7 @@ Audit keuangan tanpa ribet dan tanpa perlu ahli akuntansi manual.
 
 ---
 
-### VI. Manajemen Kredensial & Keamanan (Setelan Akses)
+### VII. Manajemen Kredensial & Keamanan (Setelan Akses)
 Melindungi data rahasia perusahaan Anda.
 *   **PIN Guard (120610)**: Tab Setelan dikunci dengan PIN untuk memastikan hanya pimpinan yang bisa mengubah daftar user.
 *   **Multi-Level Access**: Tambahkan akun untuk staf Anda (Operator, Supervisor, Kasir) dengan nama dan password mereka masing-masing.
@@ -58,7 +67,7 @@ Melindungi data rahasia perusahaan Anda.
 
 ---
 
-### VII. Mengapa Menggunakan RiceFlow Enterprise?
+### VIII. Mengapa Menggunakan RiceFlow Enterprise?
 1.  **Akurasi Data**: Tidak ada lagi kesalahan catat manual di kertas yang mudah hilang.
 2.  **Kecepatan Operasional**: Pembuatan Surat Jalan yang biasanya 10 menit kini hanya 10 detik.
 3.  **Transparansi**: Pimpinan dapat memantau stok dan keuangan dari mana saja secara real-time melalui cloud.
