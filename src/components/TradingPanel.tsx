@@ -370,8 +370,11 @@ export const TradingPanel = ({ state, onAddSchedule, onDeleteSchedule }: any) =>
                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Penerima Cabang</p>
               </div>
               <div>
-                <div className="h-24 border-b border-slate-200 mb-4 mx-8 font-black text-slate-800 flex items-end justify-center pb-2">H. Moch. Amich</div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-emerald-600">PP BUMI MAS</p>
+                <div className="h-24 border-b border-slate-200 mb-4 mx-8 font-black text-slate-800 flex items-center justify-center relative">
+                   <span className="font-['Dancing_Script'] text-3xl text-emerald-800/80 transform -rotate-6 absolute -top-2">H. Moch. Amich</span>
+                   <div className="absolute top-0 w-20 h-20 opacity-10 border-4 border-emerald-600 rounded-full flex items-center justify-center text-[10px] font-black uppercase text-emerald-600 border-dashed animate-spin-slow">Bumi Mas Official</div>
+                </div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-emerald-600">PP BUMI MAS (Digital Approved)</p>
               </div>
             </div>
           </div>
@@ -420,7 +423,7 @@ export const TradingPanel = ({ state, onAddSchedule, onDeleteSchedule }: any) =>
             <div className="grid grid-cols-3 gap-12 text-center mt-32">
               <div><div className="h-24 border-b border-slate-200 mb-4 mx-8"></div><p className="text-[10px] font-black uppercase">Sopir</p></div>
               <div><div className="h-24 border-b border-slate-200 mb-4 mx-8"></div><p className="text-[10px] font-black uppercase">Penerima</p></div>
-              <div><div className="h-24 border-b border-slate-200 mb-4 mx-8 font-black flex items-end justify-center pb-2">H. Moch. Amich</div><p className="text-[10px] font-black uppercase">PP BUMI MAS</p></div>
+              <div><div className="h-24 border-b border-slate-200 mb-4 mx-8 font-black flex items-center justify-center relative"><span className="font-['Dancing_Script'] text-2xl text-emerald-800/80 -rotate-3">H. Moch. Amich</span></div><p className="text-[10px] font-black uppercase text-emerald-600">PP BUMI MAS (Approved)</p></div>
             </div>
           </div>
         )}

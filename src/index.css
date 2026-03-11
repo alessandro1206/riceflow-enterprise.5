@@ -1,5 +1,6 @@
 @tailwind base;
 @tailwind components;
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@200;300;400;500;600;700;800&family=Dancing+Script:wght@700&display=swap');
 @tailwind utilities;
 
 @layer base {
