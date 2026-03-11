@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import Layout from './components/Layout';
 import { Dashboard } from './components/Dashboard';
 import { ProductionPanel } from './components/ProductionPanel';
 import { TradingPanel } from './components/TradingPanel';
 import { DirectSalesPanel } from './components/DirectSalesPanel';
 import { AccountingPanel } from './components/AccountingPanel';
+import { PricePanel } from './components/PricePanel';
+import { Login } from './components/Login';
 
 const INITIAL_STATE = {
   piles: [
@@ -14,11 +16,11 @@ const INITIAL_STATE = {
     { id: 'D', currentWeight: 10000, type: 'GKG' },
   ],
   inventory: [
-    { id: 'p1', productName: 'Beras Premium', quantity: 0 },
-    { id: 'p2', productName: 'Beras Medium', quantity: 0 },
-    { id: 'p3', productName: 'Broken/Patah', quantity: 0 },
-    { id: 'p4', productName: 'Menir', quantity: 0 },
-    { id: 'p5', productName: 'Katul/Dedak', quantity: 0 },
+    { id: 'p1', productName: 'Beras Premium', quantity: 0, price: 12500 },
+    { id: 'p2', productName: 'Beras Medium', quantity: 0, price: 11000 },
+    { id: 'p3', productName: 'Broken/Patah', quantity: 0, price: 9000 },
+    { id: 'p4', productName: 'Menir', quantity: 0, price: 7500 },
+    { id: 'p5', productName: 'Katul/Dedak', quantity: 0, price: 5000 },
   ],
   masterSuppliers: [],
   masterCustomers: [
@@ -50,6 +52,9 @@ const INITIAL_STATE = {
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [isLoggedIn, setIsLoggedIn] = useState(() => {
+    return localStorage.getItem('riceflow_auth') === 'true';
+  });
   const [state, setState] = useState(() => {
     const saved = localStorage.getItem('riceflow_v13_closing');
     return saved ? JSON.parse(saved) : INITIAL_STATE;
@@ -57,6 +62,7 @@ export default function App() {
 
   // --- THE CLOUD CONNECTION ---
   useEffect(() => {
+    if (!isLoggedIn) return;
     const fetchCloudData = async () => {
       try {
         const response = await fetch(
@@ -81,11 +87,21 @@ export default function App() {
     fetchCloudData();
     const interval = setInterval(fetchCloudData, 5000);
     return () => clearInterval(interval);
-  }, []);
+  }, [isLoggedIn]);
 
   useEffect(() => {
     localStorage.setItem('riceflow_v13_closing', JSON.stringify(state));
   }, [state]);
+
+  const handleLogin = () => {
+    setIsLoggedIn(true);
+    localStorage.setItem('riceflow_auth', 'true');
+  };
+
+  const handleLogout = () => {
+    setIsLoggedIn(false);
+    localStorage.removeItem('riceflow_auth');
+  };
 
   // --- ACCOUNTING AUTOMATION ENGINE ---
   const addJournalEntry = (desc: string, lines: any[]) => {
@@ -213,12 +229,25 @@ export default function App() {
     );
   };
 
+  const onUpdatePrice = (productId: string, newPrice: number) => {
+    setState((prev: any) => {
+      const newInv = prev.inventory.map((item: any) => 
+        item.id === productId ? { ...item, price: newPrice } : item
+      );
+      return { ...prev, inventory: newInv };
+    });
+  };
+
+  if (!isLoggedIn) {
+    return <Login onLogin={handleLogin} />;
+  }
+
   return (
     <Layout
       activeTab={activeTab}
       setActiveTab={setActiveTab}
       onSaveData={() => { }}
-      onLoadData={() => { }}
+      onLogout={handleLogout}
     >
       {activeTab === 'dashboard' && (
         <Dashboard state={state} setActiveTab={setActiveTab} />
@@ -241,6 +270,9 @@ export default function App() {
           state={state}
           onSaleSubmit={(order: any) => onSaleSubmit(order, true)}
         />
+      )}
+      {activeTab === 'prices' && (
+        <PricePanel state={state} onUpdatePrice={onUpdatePrice} />
       )}
       {activeTab === 'accounting' && (
         <AccountingPanel state={state} onYearEndClose={onYearEndClose} />

@@ -1,7 +1,27 @@
-import { useState, useEffect } from 'react';
-import { Scale, Printer, Truck, User, Save, Combine, Plus, Trash2, PackageOpen } from 'lucide-react';
+import {
+  useState,
+  useEffect
+} from 'react';
+import {
+  Scale,
+  Printer,
+  Truck,
+  User,
+  Save,
+  Combine,
+  Plus,
+  Trash2,
+  Camera,
+  RefreshCw,
+  Settings,
+} from 'lucide-react';
+import Tesseract from 'tesseract.js';
 
-export const ProductionPanel = ({ state, onMillingSubmit, onAddExpense }: any) => {
+export const ProductionPanel = ({
+  state,
+  onMillingSubmit,
+  onAddExpense
+}: any) => {
   const [activeTab, setActiveTab] = useState('timbangan');
   const [ticket, setTicket] = useState({
     nopol: '',
@@ -12,9 +32,26 @@ export const ProductionPanel = ({ state, onMillingSubmit, onAddExpense }: any) =
     netto: 0,
   });
 
+  // Camera & ALPR State
+  const [cameraSettings, setCameraSettings] = useState({
+    ip: '192.168.1.108',
+    user: 'admin',
+    pass: 'admin123',
+    showSettings: false
+  });
+  const [isScanning, setIsScanning] = useState(false);
+  const [lastSnapshot, setLastSnapshot] = useState<string | null>(null);
+  const [ocrStatus, setOcrStatus] = useState('');
+
   // State Baru Giling Multiple Input & Output
-  const [millInputs, setMillInputs] = useState([{ pileId: 'A', weight: 0 }]);
-  const [millOutputs, setMillOutputs] = useState([{ productId: 'p1', weight: 0 }]);
+  const [millInputs, setMillInputs] = useState([{
+    pileId: 'A',
+    weight: 0
+  }]);
+  const [millOutputs, setMillOutputs] = useState([{
+    productId: 'p1',
+    weight: 0
+  }]);
 
   // State Biaya
   const [exp, setExp] = useState({ desc: '', amount: 0, cat: '61001' });
@@ -88,322 +125,424 @@ export const ProductionPanel = ({ state, onMillingSubmit, onAddExpense }: any) =
         tare: 0,
         netto: 0,
       });
+      setLastSnapshot(null);
+    }
+  };
+
+  const captureAndScan = async () => {
+    setIsScanning(true);
+    setOcrStatus('Mengambil Gambar...');
+    
+    // Dahua Snapshot URL
+    const snapshotUrl = `http://${cameraSettings.ip}/cgi-bin/snapshot.cgi?loginuse=${cameraSettings.user}&loginpas=${cameraSettings.pass}`;
+    
+    try {
+      const response = await fetch(snapshotUrl);
+      const blob = await response.blob();
+      const imageUrl = URL.createObjectURL(blob);
+      setLastSnapshot(imageUrl);
+
+      setOcrStatus('Mengenali Plat Nomor (Local AI)...');
+      
+      const { data: { text } } = await Tesseract.recognize(imageUrl, 'eng', {
+        logger: m => console.log(m)
+      });
+
+      // Filter for Indonesian Plate Pattern (simplified: capital letters and numbers)
+      const cleanPlate = text.toUpperCase().replace(/[^A-Z0-9\s]/g, '').trim();
+      const match = cleanPlate.match(/[A-Z]{1,2}\s?\d{1,4}\s?[A-Z]{1,3}/);
+      
+      if (match) {
+        setTicket(prev => ({ ...prev, nopol: match[0] }));
+        setOcrStatus('Berhasil!');
+      } else {
+        setOcrStatus('Plat tidak terdeteksi, silakan coba lagi.');
+      }
+    } catch (err) {
+      console.error(err);
+      setOcrStatus('Gagal mengambil gambar dari kamera.');
+      alert('Pastikan kamera terhubung di IP ' + cameraSettings.ip);
+    } finally {
+      setIsScanning(false);
     }
   };
 
   return (
-    <div className="space-y-6 text-stone-800">
-      <header className="flex glass-panel p-2 rounded-2xl w-fit no-print border-amber-200/50">
-        {['timbangan', 'giling', 'biaya', 'stok'].map((t) => (
-          <button
-            key={t}
-            onClick={() => setActiveTab(t)}
-            className={`px-6 py-2 rounded-xl text-sm font-black transition-all ${activeTab === t
-              ? 'bg-amber-700/80 text-white shadow-lg backdrop-blur-md'
-              : 'text-stone-500 hover:bg-stone-100/50'
+    <div className="space-y-10 animate-fade-in pb-20">
+      <header className="flex justify-between items-end no-print">
+        <div>
+          <h2 className="text-3xl font-black text-slate-900 tracking-tight flex items-center">
+            <Scale className="mr-3 text-emerald-600" /> TIMBANGAN & GILING
+          </h2>
+          <p className="text-slate-500 font-medium">
+            Pusat Pengawasan Infrastruktur & Produksi Bumi Mas
+          </p>
+        </div>
+        <div className="flex bg-slate-100 p-1 rounded-2xl">
+          {['timbangan', 'giling', 'biaya'].map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`px-6 py-2.5 rounded-xl font-black text-xs uppercase tracking-tight transition-all ${
+                activeTab === tab
+                  ? 'bg-white text-emerald-700 shadow-sm'
+                  : 'text-slate-400 hover:text-slate-600'
               }`}
-          >
-            {t === 'giling' ? 'PROSES GILING (MIXING)' : t.toUpperCase()}
-          </button>
-        ))}
+            >
+              {tab === 'biaya' ? 'BIAYA OPS' : tab}
+            </button>
+          ))}
+        </div>
       </header>
 
       {activeTab === 'timbangan' && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-fade-in">
-          <div className="lg:col-span-2 glass border-amber-200/30 p-8 rounded-3xl space-y-6 no-print">
-            <h3 className="text-xl font-black text-stone-800 flex items-center">
-              <Scale className="mr-2 text-amber-600" /> Input Timbangan Masuk
-            </h3>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="col-span-1">
-                <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
-                  Nomor Polisi (Nopol)
-                </label>
-                <div className="relative">
-                  <Truck className="absolute left-4 top-4 w-5 h-5 text-slate-300" />
-                  <input
-                    className="w-full p-4 pl-12 bg-slate-50 border rounded-2xl font-black text-lg uppercase"
-                    value={ticket.nopol}
-                    onChange={(e) =>
-                      setTicket({
-                        ...ticket,
-                        nopol: e.target.value.toUpperCase(),
-                      })
-                    }
-                    placeholder="L 1234 AB"
-                  />
-                </div>
-              </div>
-              <div className="col-span-1">
-                <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
-                  Nama Sopir
-                </label>
-                <div className="relative">
-                  <User className="absolute left-4 top-4 w-5 h-5 text-slate-300" />
-                  <input
-                    className="w-full p-4 pl-12 bg-slate-50 border rounded-2xl font-bold"
-                    value={ticket.driver}
-                    onChange={(e) =>
-                      setTicket({ ...ticket, driver: e.target.value })
-                    }
-                    placeholder="Nama Sopir"
-                  />
-                </div>
-              </div>
-
-              <div className="bg-blue-50 p-6 rounded-3xl border border-blue-100">
-                <label className="text-[10px] font-black text-blue-600 uppercase">
-                  Berat Gross (kg)
-                </label>
-                <input
-                  type="number"
-                  className="w-full bg-transparent text-4xl font-black text-blue-900 outline-none"
-                  value={ticket.gross || ''}
-                  onChange={(e) =>
-                    setTicket({ ...ticket, gross: Number(e.target.value) })
-                  }
-                />
-              </div>
-
-              <div className="bg-slate-50 p-6 rounded-3xl border">
-                <label className="text-[10px] font-black text-slate-400 uppercase">
-                  Berat Tare (kg)
-                </label>
-                <input
-                  type="number"
-                  className="w-full bg-transparent text-4xl font-black text-slate-600 outline-none"
-                  value={ticket.tare || ''}
-                  onChange={(e) =>
-                    setTicket({ ...ticket, tare: Number(e.target.value) })
-                  }
-                />
-              </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+          <div className="glass-panel p-10 no-print">
+            <div className="flex justify-between items-center mb-10">
+              <h3 className="font-black text-slate-800 uppercase text-xs tracking-widest">Registrasi Tiket</h3>
+              <button 
+                onClick={() => setCameraSettings({...cameraSettings, showSettings: !cameraSettings.showSettings})}
+                className="p-2 text-slate-400 hover:text-emerald-600 transition-colors"
+              >
+                <Settings className="w-5 h-5" />
+              </button>
             </div>
 
-            <div className="flex gap-4 pt-4">
-              <button
-                onClick={handleSaveTicket}
-                className="flex-1 bg-stone-800/90 backdrop-blur-sm border border-stone-600 text-amber-50 py-5 rounded-2xl font-black text-lg flex justify-center items-center hover:bg-stone-900 transition-colors shadow-lg"
-              >
-                <Save className="mr-2" /> SIMPAN DATA
-              </button>
-              <button
-                onClick={handlePrint}
-                className="px-8 glass hover:bg-white/80 border-2 border-stone-800 text-stone-800 py-5 rounded-2xl font-black text-lg flex justify-center items-center transition-colors shadow-sm"
-              >
-                <Printer className="mr-2" /> CETAK
-              </button>
+            <div className="space-y-8">
+              <div className="grid grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-[10px] font-black text-slate-400 mb-2 uppercase tracking-widest ml-1">Nomor Polisi</label>
+                  <div className="relative group">
+                    <Truck className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300 group-focus-within:text-emerald-500 transition-colors" />
+                    <input
+                      className="w-full p-4 pl-12 glass-input font-black text-xl uppercase"
+                      value={ticket.nopol}
+                      onChange={(e) => setTicket({ ...ticket, nopol: e.target.value.toUpperCase() })}
+                      placeholder="L 1234 AB"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black text-slate-400 mb-2 uppercase tracking-widest ml-1">Nama Sopir</label>
+                  <div className="relative group">
+                    <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300 group-focus-within:text-emerald-500 transition-colors" />
+                    <input
+                      className="w-full p-4 pl-12 glass-input font-bold"
+                      value={ticket.driver}
+                      onChange={(e) => setTicket({ ...ticket, driver: e.target.value })}
+                      placeholder="Input Nama"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-[10px] font-black text-slate-400 mb-2 uppercase tracking-widest ml-1">Jenis Material</label>
+                  <select
+                    className="w-full p-4 glass-input font-bold"
+                    value={ticket.material}
+                    onChange={(e) => setTicket({ ...ticket, material: e.target.value })}
+                  >
+                    <option value="GKG">Gabah Giling (GKG)</option>
+                    <option value="GKP">Gabah Panen (GKP)</option>
+                    <option value="RICE">Beras Setengah Jadi</option>
+                  </select>
+                </div>
+                <div className="bg-emerald-50/50 p-4 rounded-3xl border border-emerald-100 flex items-center justify-between">
+                   <div>
+                     <p className="text-[10px] font-black text-emerald-700 uppercase mb-1">Live Scale</p>
+                     <p className="text-2xl font-black text-emerald-900">{ticket.gross.toLocaleString()}<small className="text-xs ml-1">KG</small></p>
+                   </div>
+                   <div className="w-10 h-10 bg-emerald-500/10 rounded-full flex items-center justify-center animate-pulse">
+                     <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
+                   </div>
+                </div>
+              </div>
+
+              <div className="pt-6">
+                <button
+                  onClick={captureAndScan}
+                  disabled={isScanning}
+                  className="w-full bg-slate-900 text-white py-5 rounded-3xl font-black flex items-center justify-center space-x-3 hover:bg-emerald-600 transition-all shadow-xl disabled:opacity-50"
+                >
+                  {isScanning ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Camera className="w-5 h-5" />}
+                  <span>{isScanning ? 'PEMINDAIAN PLATE...' : 'AMBIL SNAPSHOT & SCAN'}</span>
+                </button>
+              </div>
             </div>
           </div>
 
-          <div className="bg-white p-8 rounded-3xl border shadow-lg border-emerald-100 print:shadow-none print:border-none print:fixed print:inset-0 print:z-[100] print:bg-white">
-            <div className="text-center border-b-2 border-dashed pb-4 mb-4">
-              <h2 className="font-black text-xl text-emerald-800">
-                PP BUMI MAS
-              </h2>
-              <p className="text-[10px] font-bold text-slate-500 uppercase">
-                Jembatan Timbang Digital - Surabaya
-              </p>
-            </div>
-            <div className="space-y-4 py-4 border-b-2 border-dashed">
-              <div className="flex justify-between text-sm">
-                <span className="text-slate-400 font-bold">NOPOL:</span>
-                <span className="font-black">{ticket.nopol || '-'}</span>
+          <div>
+             {/* TICKET PREVIEW */}
+            <div className="glass-panel p-10 bg-white relative overflow-hidden shadow-2xl shadow-emerald-900/10">
+              <div className="absolute top-0 right-0 w-40 h-40 bg-emerald-500/5 -translate-y-10 translate-x-10 rounded-full blur-3xl"></div>
+              
+              <div className="flex justify-between items-start border-b-2 border-slate-900 pb-8 mb-8">
+                <div className="flex items-center space-x-4">
+                  <img src="/weighbridge_icon.png" alt="Logo" className="w-14 h-14 rounded-2xl shadow-xl" />
+                  <div>
+                    <h1 className="text-2xl font-black text-slate-900 tracking-tighter">PP BUMI MAS</h1>
+                    <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Enterprise Infrastructure</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <h2 className="text-lg font-black text-slate-900 uppercase">TIKET TIMBANGAN</h2>
+                  <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase">Cloud ID: RF-{Date.now().toString().slice(-6)}</p>
+                </div>
               </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-slate-400 font-bold">SOPIR:</span>
-                <span className="font-black">{ticket.driver || '-'}</span>
+
+              <div className="grid grid-cols-2 gap-10 mb-10">
+                <div className="space-y-4">
+                  <div className="flex justify-between border-b border-slate-100 pb-2">
+                    <span className="text-[10px] font-black text-slate-400 uppercase">NOMOR POLISI</span>
+                    <span className="text-sm font-black text-slate-800">{ticket.nopol || '---'}</span>
+                  </div>
+                  <div className="flex justify-between border-b border-slate-100 pb-2">
+                    <span className="text-[10px] font-black text-slate-400 uppercase">DRIVER</span>
+                    <span className="text-sm font-black text-slate-800">{ticket.driver || '---'}</span>
+                  </div>
+                </div>
+                <div className="space-y-4">
+                   <div className="flex justify-between border-b border-slate-100 pb-2">
+                    <span className="text-[10px] font-black text-slate-400 uppercase">MATERIAL</span>
+                    <span className="text-sm font-black text-emerald-700">{ticket.material}</span>
+                  </div>
+                   <div className="flex justify-between border-b border-slate-100 pb-2">
+                    <span className="text-[10px] font-black text-slate-400 uppercase">TANGGAL</span>
+                    <span className="text-sm font-black text-slate-800">{new Date().toLocaleDateString('id-ID')}</span>
+                  </div>
+                </div>
               </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-slate-400 font-bold">TANGGAL:</span>
-                <span className="font-black">
-                  {new Date().toLocaleDateString('id-ID')}
-                </span>
+
+              <div className="grid grid-cols-3 gap-6 mb-12">
+                <div className="p-4 bg-slate-50 rounded-2xl">
+                   <p className="text-[9px] font-black text-slate-400 uppercase mb-1 text-center">BRUTO</p>
+                   <p className="text-xl font-black text-center text-slate-900">{ticket.gross.toLocaleString()}</p>
+                </div>
+                <div className="p-4 bg-slate-50 rounded-2xl">
+                   <p className="text-[9px] font-black text-slate-400 uppercase mb-1 text-center">TARA</p>
+                   <p className="text-xl font-black text-center text-slate-900">{ticket.tare.toLocaleString()}</p>
+                </div>
+                <div className="p-4 bg-emerald-600 rounded-2xl shadow-lg shadow-emerald-900/20">
+                   <p className="text-[9px] font-black text-emerald-100 uppercase mb-1 text-center font-bold">NETTO</p>
+                   <p className="text-xl font-black text-center text-white">{ticket.netto.toLocaleString()}</p>
+                </div>
               </div>
-            </div>
-            <div className="py-6 space-y-2">
-              <div className="flex justify-between text-sm">
-                <span>GROSS</span>
-                <span className="font-bold">
-                  {ticket.gross.toLocaleString()} kg
-                </span>
+
+              <div className="grid grid-cols-2 gap-12 text-center mt-12 pb-4">
+                <div>
+                   <div className="h-16 border-b border-slate-200 mb-2"></div>
+                   <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Pihak Sopir</p>
+                </div>
+                <div>
+                  <p className="text-[8px] font-black text-emerald-600 mb-2 uppercase tracking-[0.2em]">Validated by</p>
+                  <p className="font-black text-xs text-slate-800 mb-1 border-b inline-block px-4">AMICH ENTERPRISE</p>
+                </div>
               </div>
-              <div className="flex justify-between text-sm">
-                <span>TARE</span>
-                <span className="font-bold">
-                  {ticket.tare.toLocaleString()} kg
-                </span>
+
+              <div className="mt-10 no-print flex space-x-4">
+                <button
+                  onClick={handleSaveTicket}
+                  className="flex-1 bg-emerald-600 text-white py-4 rounded-2xl font-black shadow-xl hover:bg-emerald-700 transition-all flex items-center justify-center space-x-2"
+                >
+                  <Save className="w-5 h-5" />
+                  <span>SIMPAN TICKET</span>
+                </button>
+                <button
+                  onClick={handlePrint}
+                  className="px-6 border-2 border-slate-200 text-slate-500 rounded-2xl hover:bg-slate-50 transition-colors"
+                >
+                  <Printer className="w-5 h-5" />
+                </button>
               </div>
-              <div className="flex justify-between text-xl font-black pt-4 border-t">
-                <span>NETTO</span>
-                <span className="text-emerald-600">
-                  {ticket.netto.toLocaleString()} kg
-                </span>
-              </div>
-            </div>
-            <div className="mt-10 text-center">
-              <div className="h-20 w-32 border-b border-slate-300 mx-auto"></div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase mt-2">
-                Tanda Tangan Sopir
-              </p>
             </div>
           </div>
         </div>
       )}
 
       {activeTab === 'giling' && (
-        <div className="grid grid-cols-1 lg:grid-cols-1 gap-6 animate-fade-in no-print">
-          <div className="glass border-amber-200/30 p-10 rounded-3xl space-y-10">
-            <div className="flex justify-between items-center border-b border-stone-300/30 pb-6">
-              <div>
-                <h3 className="font-black text-stone-800 text-2xl">Form Giling (Mixing & Blending)</h3>
-                <p className="text-sm text-stone-600">Input tumpukan gabah dan hasil beras secara variatif.</p>
-              </div>
-              <div className="text-right bg-amber-50 p-6 rounded-3xl border border-amber-100 shadow-sm min-w-[200px]">
-                <p className="text-[10px] font-black text-amber-600 uppercase mb-1 drop-shadow-sm">Total Input Produksi</p>
-                <p className="text-3xl font-black text-amber-700 drop-shadow-sm">{millInputs.reduce((a, b) => a + b.weight, 0).toLocaleString()} <small className="text-sm">kg</small></p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-              {/* BAGIAN INPUT GABAH (MIXING) */}
-              <div className="space-y-6">
-                <div className="flex justify-between items-center">
-                  <h4 className="font-black text-slate-700 uppercase tracking-widest text-xs flex items-center">
-                    <Combine className="mr-2 w-4 h-4 text-emerald-500" /> Input Tumpukan (Max 15)
-                  </h4>
-                  <button onClick={() => setMillInputs([...millInputs, { pileId: 'A', weight: 0 }])} className="text-xs bg-emerald-100 text-emerald-700 px-3 py-1.5 rounded-lg font-black hover:bg-emerald-200 flex items-center">
-                    <Plus className="w-3 h-3 mr-1" /> TAMBAH TUMPUKAN
-                  </button>
-                </div>
-                <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-                  {millInputs.map((inp, idx) => (
-                    <div key={idx} className="flex items-center space-x-3 bg-slate-50 p-3 rounded-2xl border border-slate-100 animate-fade-in">
-                      <select className="flex-1 p-3 bg-white border rounded-xl font-bold text-sm text-slate-500" value={inp.pileId}
-                        onChange={e => {
-                          const newIn = [...millInputs];
-                          newIn[idx].pileId = e.target.value;
-                          setMillInputs(newIn);
-                        }}>
-                        {state.piles.map((p: any) => <option key={p.id} value={p.id}>Pile {p.id} (Sisa: {p.currentWeight} kg)</option>)}
-                      </select>
-                      <input type="number" placeholder="Qty kg" className="w-32 p-3 bg-white border rounded-xl font-black text-center text-slate-500" value={inp.weight || ''}
-                        onChange={e => {
-                          const newIn = [...millInputs];
-                          newIn[idx].weight = Number(e.target.value);
-                          setMillInputs(newIn);
-                        }} />
-                      <button onClick={() => setMillInputs(millInputs.filter((_, i) => i !== idx))} className="p-3 text-slate-300 hover:text-red-500 transition-colors bg-white rounded-xl border border-slate-100 shadow-sm flex items-center justify-center">
-                        <Trash2 className="w-4 h-4" />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 animate-fade-in">
+           <div className="glass-panel p-10">
+              <h3 className="text-xs font-black text-slate-800 uppercase tracking-widest mb-10">Konfigurasi Penggilingan</h3>
+              <div className="space-y-8">
+                 <div className="p-8 bg-emerald-50/50 rounded-[40px] border border-emerald-100/50">
+                    <div className="flex justify-between items-center mb-6">
+                      <p className="text-[10px] font-black text-emerald-700 uppercase tracking-widest">Input Gabah (Bahan)</p>
+                      <button onClick={() => setMillInputs([...millInputs, { pileId: 'A', weight: 0 }])} className="p-2 bg-white text-emerald-600 rounded-xl shadow-sm hover:scale-110 transition-all">
+                        <Plus className="w-4 h-4" />
                       </button>
                     </div>
-                  ))}
-                </div>
-              </div>
+                    <div className="space-y-4">
+                      {millInputs.map((input, idx) => (
+                        <div key={idx} className="flex space-x-4 animate-fade-in">
+                          <select 
+                            className="flex-1 p-4 glass-input font-bold text-sm"
+                            value={input.pileId}
+                            onChange={(e) => {
+                              const newInputs = [...millInputs];
+                              newInputs[idx].pileId = e.target.value;
+                              setMillInputs(newInputs);
+                            }}
+                          >
+                            {state.piles.map((p: any) => (
+                              <option key={p.id} value={p.id}>TUMPUKAN {p.id} ({p.type})</option>
+                            ))}
+                          </select>
+                          <input 
+                            type="number"
+                            className="w-32 p-4 glass-input font-black text-sm text-center"
+                            placeholder="KG"
+                            value={input.weight || ''}
+                            onChange={(e) => {
+                              const newInputs = [...millInputs];
+                              newInputs[idx].weight = Number(e.target.value);
+                              setMillInputs(newInputs);
+                            }}
+                          />
+                          {millInputs.length > 1 && (
+                            <button onClick={() => setMillInputs(millInputs.filter((_, i) => i !== idx))} className="text-slate-300 hover:text-red-500 transition-colors">
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                 </div>
 
-              {/* BAGIAN HASIL BERAS (OUTPUT) */}
-              <div className="space-y-6 border-l lg:pl-12">
-                <div className="flex justify-between items-center">
-                  <h4 className="font-black text-slate-700 uppercase tracking-widest text-xs flex items-center">
-                    <PackageOpen className="mr-2 w-4 h-4 text-blue-500" /> Hasil Produksi (Barang Jadi)
-                  </h4>
-                  <button onClick={() => setMillOutputs([...millOutputs, { productId: 'p1', weight: 0 }])} className="text-xs bg-blue-100 text-blue-700 px-3 py-1.5 rounded-lg font-black hover:bg-blue-200 flex items-center">
-                    <Plus className="w-3 h-3 mr-1" /> TAMBAH PRODUK
-                  </button>
-                </div>
-                <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-                  {millOutputs.map((out, idx) => (
-                    <div key={idx} className="flex items-center space-x-3 bg-slate-50 p-3 rounded-2xl border border-slate-100 animate-fade-in">
-                      <select className="flex-1 p-3 bg-white border rounded-xl font-bold text-sm text-slate-500" value={out.productId}
-                        onChange={e => {
-                          const newOut = [...millOutputs];
-                          newOut[idx].productId = e.target.value;
-                          setMillOutputs(newOut);
-                        }}>
-                        {state.inventory.map((inv: any) => <option key={inv.id} value={inv.id}>{inv.name || inv.productName}</option>)}
-                      </select>
-                      <input type="number" placeholder="Qty kg" className="w-32 p-3 bg-white border rounded-xl font-black text-center text-slate-500" value={out.weight || ''}
-                        onChange={e => {
-                          const newOut = [...millOutputs];
-                          newOut[idx].weight = Number(e.target.value);
-                          setMillOutputs(newOut);
-                        }} />
-                      <button onClick={() => setMillOutputs(millOutputs.filter((_, i) => i !== idx))} className="p-3 text-slate-300 hover:text-red-500 transition-colors bg-white rounded-xl border border-slate-100 shadow-sm flex items-center justify-center">
-                        <Trash2 className="w-4 h-4" />
+                 <div className="p-8 bg-slate-50 rounded-[40px] border border-white">
+                    <div className="flex justify-between items-center mb-6">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Output Produksi (Jadi)</p>
+                      <button onClick={() => setMillOutputs([...millOutputs, { productId: 'p1', weight: 0 }])} className="p-2 bg-white text-slate-600 rounded-xl shadow-sm hover:scale-110 transition-all">
+                        <Plus className="w-4 h-4" />
                       </button>
                     </div>
-                  ))}
-                </div>
+                    <div className="space-y-4">
+                      {millOutputs.map((output, idx) => (
+                        <div key={idx} className="flex space-x-4 animate-fade-in">
+                          <select 
+                            className="flex-1 p-4 glass-input font-bold text-sm"
+                            value={output.productId}
+                            onChange={(e) => {
+                              const newOutputs = [...millOutputs];
+                              newOutputs[idx].productId = e.target.value;
+                              setMillOutputs(newOutputs);
+                            }}
+                          >
+                            {state.inventory.map((p: any) => (
+                              <option key={p.id} value={p.id}>{p.productName}</option>
+                            ))}
+                          </select>
+                          <input 
+                            type="number"
+                            className="w-32 p-4 glass-input font-black text-sm text-center"
+                            placeholder="KG"
+                            value={output.weight || ''}
+                            onChange={(e) => {
+                              const newOutputs = [...millOutputs];
+                              newOutputs[idx].weight = Number(e.target.value);
+                              setMillOutputs(newOutputs);
+                            }}
+                          />
+                           {millOutputs.length > 1 && (
+                            <button onClick={() => setMillOutputs(millOutputs.filter((_, i) => i !== idx))} className="text-slate-300 hover:text-red-500 transition-colors">
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                 </div>
 
-                {/* Ringkasan Rendemen */}
-                <div className="mt-8 p-6 glass-dark border-r-0 border-l border-amber-500/20 bg-stone-900/80 rounded-3xl text-stone-50">
-                  <div className="flex justify-between items-center mb-4">
-                    <span className="text-[10px] font-black uppercase text-stone-400">Total Output Hasil</span>
-                    <span className="font-black text-xl text-amber-100">{millOutputs.reduce((a, b) => a + b.weight, 0).toLocaleString()} kg</span>
-                  </div>
-                  <div className="flex justify-between items-center pt-4 border-t border-white/10">
-                    <span className="text-[10px] font-black uppercase text-stone-400">Rendemen Giling</span>
-                    <span className="text-3xl font-black text-amber-400">
-                      {millInputs.reduce((a, b) => a + b.weight, 0) > 0 ? ((millOutputs.reduce((a, b) => a + b.weight, 0) / millInputs.reduce((a, b) => a + b.weight, 0)) * 100).toFixed(1) : 0}%
-                    </span>
-                  </div>
-                </div>
+                 <button 
+                   onClick={handleGilingMixing}
+                   className="w-full bg-slate-900 text-white py-6 rounded-[32px] font-black shadow-2xl hover:bg-emerald-600 transition-all flex items-center justify-center space-x-3 group"
+                 >
+                   <Combine className="w-6 h-6 group-hover:rotate-180 transition-transform duration-500" />
+                   <span className="tracking-tighter text-lg uppercase">EKSEKUSI PROSES PRODUKSI</span>
+                 </button>
               </div>
-            </div>
+           </div>
 
-            <div className="pt-8 border-t border-stone-300/30 flex justify-center">
-              <button onClick={handleGilingMixing} className="bg-amber-700/90 text-stone-50 px-20 py-5 rounded-2xl font-black text-xl hover:bg-amber-800 shadow-xl transform active:scale-95 transition-all border border-amber-600/50 backdrop-blur-sm">
-                POSTING PRODUKSI (TUTUP HARI)
-              </button>
-            </div>
-          </div>
+           <div className="space-y-10">
+              <div className="bg-[#1E293B] p-10 rounded-[48px] text-white relative overflow-hidden group">
+                 <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/10 blur-[100px] rounded-full translate-x-32 -translate-y-32"></div>
+                 <h4 className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.3em] mb-6 relative z-10">Kalkulasi Rendemen</h4>
+                 <div className="grid grid-cols-2 gap-10 relative z-10">
+                    <div>
+                      <p className="text-[10px] font-black text-slate-500 uppercase mb-2">Total Input</p>
+                      <p className="text-3xl font-black tracking-tighter">{millInputs.reduce((a, b) => a + b.weight, 0).toLocaleString()} <small className="text-sm font-bold text-slate-500">KG</small></p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-black text-emerald-500 uppercase mb-2 italic">Rendemen Akurat</p>
+                      <p className="text-3xl font-black text-emerald-400 tracking-tighter">
+                        {millInputs.reduce((a, b) => a + b.weight, 0) > 0 
+                          ? ((millOutputs.reduce((a, b) => a + b.weight, 0) / millInputs.reduce((a, b) => a + b.weight, 0)) * 100).toFixed(1) 
+                          : '0.0'}%
+                      </p>
+                    </div>
+                 </div>
+                 <p className="mt-10 text-xs text-slate-400 font-medium leading-relaxed relative z-10">
+                   Persentase rendemen dihitung secara otomatis berdasarkan perbandingan input bahan baku dan output produk jadi.
+                 </p>
+              </div>
+           </div>
         </div>
       )}
 
       {activeTab === 'biaya' && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-fade-in no-print">
-          <div className="glass p-8 rounded-3xl space-y-6">
-            <h3 className="font-black text-slate-800 text-lg">Input Pengeluaran</h3>
-            <div className="space-y-4">
-              <select className="w-full p-4 glass-input rounded-2xl text-slate-700 font-bold" value={exp.cat} onChange={e => setExp({ ...exp, cat: e.target.value })}>
-                <option value="61001">Listrik & Solar</option>
-                <option value="61002">Gaji Borongan</option>
-                <option value="61003">Perawatan Mesin</option>
-              </select>
-              <input placeholder="Keterangan" className="w-full p-4 bg-[#3E3D40] text-white border-none rounded-2xl placeholder-[#969599]" value={exp.desc} onChange={e => setExp({ ...exp, desc: e.target.value })} />
-              <input type="number" placeholder="Rp" className="w-full p-4 bg-[#FFF5F5] border-none rounded-2xl font-black text-xl text-[#E53935] placeholder-[#FFD6D6]" value={exp.amount || ''} onChange={e => setExp({ ...exp, amount: Number(e.target.value) })} />
-              <button onClick={handleExpense} className="w-full bg-[#D32F2F] text-white py-4 rounded-2xl font-black text-lg hover:bg-red-700 transition-colors shadow-sm">POSTING BIAYA</button>
-            </div>
-          </div>
-          <div className="glass p-6 rounded-3xl overflow-hidden flex flex-col">
-            <h3 className="font-bold text-slate-700 mb-4 px-2">Log Buku Biaya</h3>
-            <div className="flex-1 overflow-y-auto space-y-3 px-2">
-              {state.expenseBook.slice().reverse().map((e: any) => (
-                <div key={e.id} className="p-4 bg-slate-50 border rounded-2xl flex justify-between items-center">
-                  <div><p className="font-black text-slate-800">{e.desc}</p><p className="text-[10px] text-slate-400 uppercase">{e.date}</p></div>
-                  <p className="font-black text-red-600">-{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(e.amount)}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {activeTab === 'stok' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 animate-fade-in no-print">
-          {state.piles.map((p: any) => (
-            <div key={p.id} className="glass p-6 rounded-3xl text-center hover:scale-[1.02] transition-transform">
-              <p className="text-[10px] font-black text-slate-500 uppercase">Pile {p.id}</p>
-              <p className="text-2xl font-black text-slate-800">{p.currentWeight.toLocaleString()} <small className="text-xs">kg</small></p>
-            </div>
-          ))}
-          {state.inventory.map((i: any) => (
-            <div key={i.id} className="glass p-6 rounded-3xl text-center border-indigo-200/50 hover:scale-[1.02] transition-transform">
-              <p className="text-[10px] font-black text-indigo-500 uppercase">{i.name || i.productName}</p>
-              <p className="text-2xl font-black text-indigo-900">{i.quantity.toLocaleString()} <small className="text-xs">kg</small></p>
-            </div>
-          ))}
+        <div className="max-w-2xl mx-auto animate-fade-in">
+           <div className="glass-panel p-12">
+              <div className="text-center mb-12">
+                <h3 className="text-sm font-black text-slate-800 uppercase tracking-[0.2em] mb-2">Pencatatan Biaya</h3>
+                <p className="text-slate-400 text-xs font-medium">Buku Kas Operasional Bumi Mas Group</p>
+              </div>
+              <div className="space-y-8">
+                 <div>
+                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4 mb-2 block">Keterangan Pengeluaran</label>
+                   <input 
+                     type="text"
+                     className="w-full p-6 glass-input font-bold text-slate-800"
+                     placeholder="contoh: Pembelian Solar Mesin Giling 200L"
+                     value={exp.desc}
+                     onChange={(e) => setExp({...exp, desc: e.target.value})}
+                   />
+                 </div>
+                 <div className="grid grid-cols-2 gap-8">
+                    <div>
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4 mb-2 block">Jumlah (IDR)</label>
+                      <div className="relative">
+                        <span className="absolute left-6 top-1/2 -translate-y-1/2 font-black text-slate-300">Rp</span>
+                        <input 
+                          type="number"
+                          className="w-full p-6 pl-14 glass-input font-black text-emerald-700 text-xl"
+                          value={exp.amount || ''}
+                          onChange={(e) => setExp({...exp, amount: Number(e.target.value)})}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4 mb-2 block">Kategori Akun</label>
+                      <select 
+                        className="w-full p-6 glass-input font-black text-sm cursor-pointer"
+                        value={exp.cat}
+                        onChange={(e) => setExp({...exp, cat: e.target.value})}
+                      >
+                         <option value="61001">Solar & Energi</option>
+                         <option value="61002">Gaji Borongan</option>
+                         <option value="61003">Mekanik & Suku Cadang</option>
+                         <option value="61004">Logistik & Distribusi</option>
+                      </select>
+                    </div>
+                 </div>
+                 <button 
+                  onClick={handleExpense}
+                  className="w-full bg-emerald-600 text-white py-6 rounded-[32px] font-black shadow-2xl hover:bg-emerald-700 transition-all mt-6 uppercase tracking-widest text-sm"
+                 >
+                   SIMPAN TRANSAKSI BIAYA
+                 </button>
+              </div>
+           </div>
         </div>
       )}
     </div>
