@@ -34,12 +34,13 @@ export const ProductionPanel = ({
 
   // Camera & ALPR State
   const [cameraSettings, setCameraSettings] = useState({
-    ip: '192.168.1.108',
+    ip: '192.168.31.190',
     user: 'admin',
-    pass: 'admin123',
+    pass: 'Admin123',
     showSettings: false
   });
   const [isScanning, setIsScanning] = useState(false);
+  const [showLiveFeed, setShowLiveFeed] = useState(false);
   const [lastSnapshot, setLastSnapshot] = useState<string | null>(null);
   const [ocrStatus, setOcrStatus] = useState('');
 
@@ -260,15 +261,40 @@ export const ProductionPanel = ({
                 </div>
               </div>
 
-              <div className="pt-6">
-                <button
-                  onClick={captureAndScan}
-                  disabled={isScanning}
-                  className="w-full bg-slate-900 text-white py-5 rounded-3xl font-black flex items-center justify-center space-x-3 hover:bg-emerald-600 transition-all shadow-xl disabled:opacity-50"
-                >
-                  {isScanning ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Camera className="w-5 h-5" />}
-                  <span>{isScanning ? 'PEMINDAIAN PLATE...' : 'AMBIL SNAPSHOT & SCAN'}</span>
-                </button>
+              <div className="pt-6 space-y-4">
+                {showLiveFeed && (
+                  <div className="relative aspect-video rounded-3xl overflow-hidden bg-slate-900 border-4 border-slate-800 shadow-inner">
+                    <img 
+                      src={`http://${cameraSettings.ip}/cgi-bin/mjpg/video.cgi?subtype=1&loginuse=${cameraSettings.user}&loginpas=${cameraSettings.pass}`}
+                      alt="Live Feed"
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute top-4 left-4 bg-red-600 text-white px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest animate-pulse flex items-center">
+                      <div className="w-2 h-2 bg-white rounded-full mr-2"></div>
+                      LIVE
+                    </div>
+                  </div>
+                )}
+                
+                <div className="flex space-x-3">
+                  <button
+                    onClick={captureAndScan}
+                    disabled={isScanning}
+                    className="flex-1 bg-slate-900 text-white py-5 rounded-3xl font-black flex items-center justify-center space-x-3 hover:bg-emerald-600 transition-all shadow-xl disabled:opacity-50"
+                  >
+                    {isScanning ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Camera className="w-5 h-5" />}
+                    <span>{isScanning ? 'SCAN' : 'AMBIL SNAPSHOT'}</span>
+                  </button>
+                  <button
+                    onClick={() => setShowLiveFeed(!showLiveFeed)}
+                    className={`px-6 py-5 rounded-3xl font-black flex items-center justify-center transition-all shadow-xl ${
+                      showLiveFeed ? 'bg-red-50 text-red-600 border-2 border-red-100' : 'bg-emerald-50 text-emerald-600 border-2 border-emerald-100 hover:bg-emerald-100'
+                    }`}
+                  >
+                    <div className={`w-3 h-3 rounded-full mr-2 ${showLiveFeed ? 'bg-red-600 animate-pulse' : 'bg-emerald-400'}`}></div>
+                    {showLiveFeed ? 'STOP' : 'LIVE'}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
