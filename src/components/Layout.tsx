@@ -12,6 +12,9 @@ import {
   LogOut,
   ShieldCheck,
   Settings,
+  Scale,
+  CalendarDays,
+  Receipt
 } from 'lucide-react';
 
 interface LayoutProps {
@@ -35,40 +38,75 @@ const Layout: React.FC<LayoutProps> = ({
   const navItems = [
     {
       id: 'dashboard',
-      label: 'Dashboard & AI',
+      label: 'Dasbor Utama',
       icon: <BarChart3 className="w-5 h-5" />,
+      roles: ['Admin'],
+    },
+    {
+      id: 'weighbridge',
+      label: 'Timbangan',
+      icon: <Scale className="w-5 h-5" />,
+      roles: ['Admin', 'Operator'],
+    },
+    {
+      id: 'finance_dashboard',
+      label: 'Dasbor Keuangan',
+      icon: <BarChart3 className="w-5 h-5" />,
+      roles: ['Admin', 'Finance'],
+    },
+    {
+      id: 'purchasing_book',
+      label: 'Buku Pembelian',
+      icon: <Receipt className="w-5 h-5" />,
+      roles: ['Admin', 'Finance'],
+    },
+    {
+      id: 'calendar',
+      label: 'Kalender Keuangan',
+      icon: <CalendarDays className="w-5 h-5" />,
+      roles: ['Admin', 'Finance'],
     },
     {
       id: 'production',
       label: 'PP BUMI MAS',
       icon: <Building2 className="w-5 h-5" />,
+      roles: ['Admin'],
     },
     {
       id: 'direct_sales',
       label: 'Penjualan Langsung',
       icon: <Store className="w-5 h-5" />,
+      roles: ['Admin'],
     },
     {
       id: 'trading',
       label: 'CV. Trading Makmur',
       icon: <Briefcase className="w-5 h-5" />,
+      roles: ['Admin'],
     },
     {
       id: 'prices',
       label: 'Daftar Harga',
       icon: <Tag className="w-5 h-5" />,
+      roles: ['Admin'],
     },
     {
       id: 'accounting',
       label: 'Pusat Akuntansi',
       icon: <BookOpen className="w-5 h-5" />,
+      roles: ['Admin'],
     },
     {
       id: 'settings',
       label: 'Setelan Akses',
       icon: <Settings className="w-5 h-5" />,
+      roles: ['Admin'],
     },
   ];
+
+  const filteredNavItems = navItems.filter(item => 
+    item.roles.includes(user?.role || 'Admin')
+  );
 
   const handleTabClick = (tabId: string) => {
     if (tabId === 'settings') {
@@ -126,7 +164,7 @@ const Layout: React.FC<LayoutProps> = ({
         </div>
 
         <nav className="flex-1 mt-8 px-6 space-y-3">
-          {navItems.map((item) => (
+          {filteredNavItems.map((item) => (
             <button
               key={item.id}
               onClick={() => handleTabClick(item.id)}

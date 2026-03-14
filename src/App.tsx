@@ -8,6 +8,10 @@ import { AccountingPanel } from './components/AccountingPanel';
 import { PricePanel } from './components/PricePanel';
 import { UserManagementPanel } from './components/UserManagementPanel';
 import { Login } from './components/Login';
+import { WeighbridgePanel } from './components/WeighbridgePanel';
+import { PurchasingBook } from './components/PurchasingBook';
+import { FinanceDashboard } from './components/FinanceDashboard';
+import { CalendarPanel } from './components/CalendarPanel';
 
 const INITIAL_STATE = {
   piles: [
@@ -49,32 +53,12 @@ const INITIAL_STATE = {
     { code: '61003', name: 'Biaya Perawatan Mesin', type: 'EXPENSE' },
   ],
   journal: [],
-  schedules: [
-    {
-      id: 'S1',
-      date: new Date().getDate(),
-      nopol: 'L 9876 BM',
-      driver: 'Budi Santoso',
-      destination: 'Banjarmasin (Pelabuhan)',
-      vessel: 'KM Dharma Rucitra',
-      tons: 25,
-      material: 'Beras Premium',
-    },
-    {
-      id: 'S2',
-      date: new Date().getDate() + 1,
-      nopol: 'B 1234 XY',
-      driver: 'Agus Triono',
-      destination: 'Sampit (Gudang)',
-      vessel: 'KM Satya Kencana',
-      tons: 20,
-      material: 'Beras Medium',
-    }
-  ],
+  schedules: [], // Deprecated in favor of custom tickets / tickets
+  tickets: [], // Master list for Weighbridge and Finance
   userList: [
-    { username: 'admin', password: 'admin123', name: 'Amich', role: 'Super Admin' },
-    { username: 'budi', password: 'budi123', name: 'Budi Santoso', role: 'Operator' },
-    { username: 'agus', password: 'agus123', name: 'Agus Triono', role: 'Supervisor' },
+    { username: 'admin', password: 'admin123', name: 'Admin', role: 'Admin' },
+    { username: 'erfi', password: 'operator123', name: 'Erfi', role: 'Operator' },
+    { username: 'emak', password: 'finance123', name: 'Emak', role: 'Finance' },
   ],
 };
 
@@ -310,6 +294,41 @@ export default function App() {
     }));
   };
 
+  // --- WEIGHBRIDGE & FINANCE ACTIONS ---
+  const onOpenTicket = (ticketData: any) => {
+    setState((prev: any) => ({
+      ...prev,
+      tickets: [...(prev.tickets || []), { ...ticketData, id: ticketData.id || `TRK-${Date.now()}` }]
+    }));
+  };
+
+  const onCloseTicket = (ticketId: string, closeData: any) => {
+    setState((prev: any) => ({
+      ...prev,
+      tickets: (prev.tickets || []).map((t: any) =>
+        t.id === ticketId ? { ...t, ...closeData, status: 'CLOSED' } : t
+      )
+    }));
+  };
+
+  const onUpdateTicketFinancials = (ticketId: string, financials: any) => {
+    setState((prev: any) => ({
+      ...prev,
+      tickets: (prev.tickets || []).map((t: any) =>
+        t.id === ticketId ? { ...t, ...financials } : t
+      )
+    }));
+  };
+
+  const onMarkPaid = (ticketId: string) => {
+    setState((prev: any) => ({
+      ...prev,
+      tickets: (prev.tickets || []).map((t: any) =>
+        t.id === ticketId ? { ...t, paid: true, paidDate: new Date().toISOString().split('T')[0] } : t
+      )
+    }));
+  };
+
   const handleTabChange = (tab: string) => {
     if (tab === 'dashboard_full') {
       setState((prev: any) => ({ ...prev, showFullAnalysis: true }));
@@ -336,6 +355,33 @@ export default function App() {
     >
       {activeTab === 'dashboard' && (
         <Dashboard state={state} setActiveTab={handleTabChange} user={user} />
+      )}
+      {activeTab === 'weighbridge' && (
+        <WeighbridgePanel 
+          state={state} 
+          onOpenTicket={onOpenTicket}
+          onCloseTicket={onCloseTicket}
+        />
+      )}
+      {activeTab === 'finance_dashboard' && (
+        <FinanceDashboard 
+          state={state} 
+          onMarkPaid={onMarkPaid}
+        />
+      )}
+      {activeTab === 'purchasing_book' && (
+        <PurchasingBook 
+          state={state} 
+          onUpdateTicketFinancials={onUpdateTicketFinancials}
+        />
+      )}
+      {activeTab === 'calendar' && (
+        <CalendarPanel 
+          state={state} 
+          onOpenTicket={onOpenTicket}
+          onCloseTicket={onCloseTicket}
+          onUpdateTicketFinancials={onUpdateTicketFinancials}
+        />
       )}
       {activeTab === 'production' && (
         <ProductionPanel
