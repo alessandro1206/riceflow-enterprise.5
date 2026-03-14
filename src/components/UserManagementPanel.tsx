@@ -88,6 +88,7 @@ export const UserManagementPanel: React.FC<UserManagementPanelProps> = ({
                 className="w-full bg-slate-100 border-none rounded-2xl px-5 py-4 font-bold text-slate-800 focus:ring-2 focus:ring-emerald-500 appearance-none"
               >
                 <option value="Operator">Operator</option>
+                <option value="Finance">Finance</option>
                 <option value="Supervisor">Supervisor</option>
                 <option value="Super Admin">Super Admin</option>
                 <option value="Direktur">Direktur</option>

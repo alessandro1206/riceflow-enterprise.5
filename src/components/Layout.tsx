@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import {
   Briefcase,
@@ -104,9 +104,37 @@ const Layout: React.FC<LayoutProps> = ({
     },
   ];
 
-  const filteredNavItems = navItems.filter(item => 
-    item.roles.includes(user?.role || 'Admin')
+  // Detect if running inside Electron
+  const [isElectron, setIsElectron] = useState(() => !!(window as any).__ELECTRON__);
+
+  useEffect(() => {
+    // Listen for the electron-ready event from main.js
+    const handler = () => {
+      setIsElectron(true);
+      setActiveTab('weighbridge');
+    };
+    if ((window as any).__ELECTRON__) {
+      setActiveTab('weighbridge');
+    }
+    window.addEventListener('electron-ready', handler);
+    return () => window.removeEventListener('electron-ready', handler);
+  }, []);
+
+  // Normalize user role for navigation filtering
+  const effectiveRole = (() => {
+    const role = user?.role || 'Admin';
+    if (['Super Admin', 'Supervisor', 'Direktur'].includes(role)) return 'Admin';
+    return role;
+  })();
+
+  let filteredNavItems = navItems.filter(item => 
+    item.roles.includes(effectiveRole)
   );
+
+  // In Electron mode (Windows App), only show Timbangan (Weighbridge)
+  if (isElectron) {
+    filteredNavItems = navItems.filter(item => item.id === 'weighbridge');
+  }
 
   const handleTabClick = (tabId: string) => {
     if (tabId === 'settings') {

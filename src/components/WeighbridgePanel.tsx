@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { Scale, Truck, CheckCircle2, User, Database, Clock, Camera, RefreshCw, Settings } from 'lucide-react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
+import { Scale, Truck, CheckCircle2, User, Database, Clock, Camera, RefreshCw, Settings, Monitor } from 'lucide-react';
 import Tesseract from 'tesseract.js';
+import Webcam from 'react-webcam';
 
 interface WeighbridgePanelProps {
   state: any;
@@ -27,8 +28,9 @@ export const WeighbridgePanel: React.FC<WeighbridgePanelProps> = ({
   });
 
   // Camera & ALPR State
+  const [cameraType, setCameraType] = useState<'ip' | 'local'>('ip');
   const [cameraSettings, setCameraSettings] = useState({
-    ip: '192.168.31.190',
+    ip: '192.168.31.200',
     user: 'admin',
     pass: 'Admin123',
     showSettings: false
@@ -37,6 +39,18 @@ export const WeighbridgePanel: React.FC<WeighbridgePanelProps> = ({
   const [showLiveFeed, setShowLiveFeed] = useState(false);
   const [lastSnapshot, setLastSnapshot] = useState<string | null>(null);
   const [ocrStatus, setOcrStatus] = useState('');
+  
+  const webcamRef = useRef<Webcam>(null);
+  
+  // Sync Camera Auth with Electron Main Process
+  useEffect(() => {
+    if ((window as any).electron?.send) {
+      (window as any).electron.send('set-camera-auth', {
+        user: cameraSettings.user,
+        pass: cameraSettings.pass
+      });
+    }
+  }, [cameraSettings.user, cameraSettings.pass]);
 
   const handleOpenSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,55 +77,73 @@ export const WeighbridgePanel: React.FC<WeighbridgePanelProps> = ({
     alert('Tiket Berhasil Dibuka!');
   };
 
-  const captureAndScan = async () => {
+  const captureAndScan = useCallback(async () => {
     setIsScanning(true);
     setOcrStatus('Mengambil Gambar...');
-    
-    // Dahua Snapshot URL
-    const snapshotUrl = `http://${cameraSettings.ip}/cgi-bin/snapshot.cgi?loginuse=${cameraSettings.user}&loginpas=${cameraSettings.pass}`;
-    
-    try {
-      const response = await fetch(snapshotUrl);
-      const blob = await response.blob();
-      const imageUrl = URL.createObjectURL(blob);
-      setLastSnapshot(imageUrl);
 
-      setOcrStatus('Mengenali Plat Nomor (Local AI)...');
-      
-      const { data: { text } } = await Tesseract.recognize(imageUrl, 'eng', {
-        logger: m => console.log(m)
-      });
+    let imageToScan: string | null = null;
 
-      // Filter for Indonesian Plate Pattern (simplified: capital letters and numbers)
-      const cleanPlate = text.toUpperCase().replace(/[^A-Z0-9\s]/g, '').trim();
-      const match = cleanPlate.match(/[A-Z]{1,2}\s?\d{1,4}\s?[A-Z]{1,3}/);
-      
-      if (match) {
-        if (activeSubTab === 'open') {
-          setOpenForm(prev => ({ ...prev, nopol: match[0] }));
-          setOcrStatus('Berhasil!');
-        } else {
-          // find matching ticket from OPEN tickets
-          const openTicks = state.tickets?.filter((t: any) => t.status === 'OPEN') || [];
-          const found = openTicks.find((t: any) => t.nopol.replace(/\s/g, '') === match[0].replace(/\s/g, ''));
-          if (found) {
-            setCloseForm(prev => ({ ...prev, ticketId: found.id }));
-            setOcrStatus('Berhasil! Tiket ditemukan otomatis.');
-          } else {
-            setOcrStatus(`Plat terdeteksi (${match[0]}) tapi tidak ada di tiket Aktif.`);
-          }
-        }
+    if (cameraType === 'local') {
+      const imageSrc = webcamRef.current?.getScreenshot();
+      if (imageSrc) {
+        imageToScan = imageSrc;
+        setLastSnapshot(imageSrc);
       } else {
-        setOcrStatus('Plat tidak terdeteksi, silakan coba lagi atau ketik manual.');
+        setOcrStatus('Gagal mengambil gambar dari webcam.');
+        setIsScanning(false);
+        return;
       }
-    } catch (err) {
-      console.error(err);
-      setOcrStatus('Gagal mengambil gambar dari kamera.');
-      alert('Pastikan kamera terhubung di IP ' + cameraSettings.ip);
-    } finally {
-      setIsScanning(false);
+    } else {
+      // IP Camera Logic
+      const snapshotUrl = `http://${cameraSettings.ip}/cgi-bin/snapshot.cgi`;
+      try {
+        const response = await fetch(snapshotUrl);
+        if (!response.ok) throw new Error('Camera response not OK');
+        const blob = await response.blob();
+        imageToScan = URL.createObjectURL(blob);
+        setLastSnapshot(imageToScan);
+      } catch (err) {
+        console.error(err);
+        setOcrStatus('Gagal terhubung ke Kamera IP.');
+        setIsScanning(false);
+        return;
+      }
     }
-  };
+
+    if (imageToScan) {
+      try {
+        setOcrStatus('Mengenali Plat Nomor (AI)...');
+        const { data: { text } } = await Tesseract.recognize(imageToScan, 'eng');
+
+        const cleanPlate = text.toUpperCase().replace(/[^A-Z0-9\s]/g, '').trim();
+        const match = cleanPlate.match(/[A-Z]{1,2}\s?\d{1,4}\s?[A-Z]{1,3}/);
+
+        if (match) {
+          const plateNumber = match[0];
+          if (activeSubTab === 'open') {
+            setOpenForm(prev => ({ ...prev, nopol: plateNumber }));
+            setOcrStatus(`Berhasil! Plat: ${plateNumber}`);
+          } else {
+            const openTicks = state.tickets?.filter((t: any) => t.status === 'OPEN') || [];
+            const found = openTicks.find((t: any) => 
+              t.nopol.replace(/\s/g, '') === plateNumber.replace(/\s/g, '')
+            );
+            if (found) {
+              setCloseForm(prev => ({ ...prev, ticketId: found.id }));
+              setOcrStatus(`Berhasil! Tiket: ${plateNumber}`);
+            } else {
+              setOcrStatus(`Plat ${plateNumber} tidak ada di tiket.`);
+            }
+          }
+        } else {
+          setOcrStatus('Plat tidak terbaca jelas.');
+        }
+      } catch (err) {
+        setOcrStatus('Gagal proses AI.');
+      }
+    }
+    setIsScanning(false);
+  }, [cameraType, cameraSettings, activeSubTab, state.tickets]);
 
   const handleCloseSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -203,33 +235,70 @@ export const WeighbridgePanel: React.FC<WeighbridgePanelProps> = ({
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
           {/* Kamera & ALPR Feed Section - Shared between open/close */}
           <div className="space-y-6">
-            <div className="bg-slate-900 rounded-3xl p-2 relative shadow-inner overflow-hidden border-4 border-slate-800">
-              {showLiveFeed ? (
-                <img 
-                  src={`http://${cameraSettings.ip}/cgi-bin/mjpg/video.cgi?subtype=1&loginuse=${cameraSettings.user}&loginpas=${cameraSettings.pass}`}
-                  alt="Live Feed"
+            <div className="flex bg-slate-100 p-1.5 rounded-2xl w-fit">
+              <button 
+                onClick={() => setCameraType('ip')}
+                className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-black transition-all ${cameraType === 'ip' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-400'}`}
+              >
+                <Database className="w-3 h-3" />
+                <span>KAMERA IP</span>
+              </button>
+              <button 
+                onClick={() => setCameraType('local')}
+                className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-black transition-all ${cameraType === 'local' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-400'}`}
+              >
+                <Monitor className="w-3 h-3" />
+                <span>WEBCAM LOKAL</span>
+              </button>
+            </div>
+
+            <div className="bg-slate-900 rounded-3xl p-2 relative shadow-inner overflow-hidden border-4 border-slate-800 ring-1 ring-white/5">
+              {cameraType === 'local' ? (
+                <Webcam
+                  audio={false}
+                  ref={webcamRef}
+                  screenshotFormat="image/jpeg"
                   className="w-full aspect-video object-cover rounded-xl"
+                  videoConstraints={{ facingMode: 'environment' }}
                 />
-              ) : lastSnapshot ? (
-                <img src={lastSnapshot} alt="Snapshot" className="w-full aspect-video object-cover rounded-xl" />
               ) : (
-                <div className="w-full aspect-video bg-slate-800 rounded-xl flex flex-col items-center justify-center text-slate-600">
-                  <Camera className="w-12 h-12 mb-2 opacity-50" />
-                  <span className="font-bold text-sm">Kamera Offline / Standby</span>
-                </div>
+                <>
+                  {showLiveFeed ? (
+                    <img 
+                      src={`http://${cameraSettings.ip}/cgi-bin/mjpg/video.cgi?subtype=1`}
+                      alt="Live Feed"
+                      className="w-full aspect-video object-cover rounded-xl"
+                      onError={() => setOcrStatus('Stream IP Error. Pastikan IP & Auth benar.')}
+                    />
+                  ) : lastSnapshot ? (
+                    <img src={lastSnapshot} alt="Snapshot" className="w-full aspect-video object-cover rounded-xl" />
+                  ) : (
+                    <div className="w-full aspect-video bg-slate-800 rounded-xl flex flex-col items-center justify-center text-slate-600">
+                      <Camera className="w-12 h-12 mb-2 opacity-50" />
+                      <span className="font-bold text-sm text-slate-500 uppercase tracking-widest">Kamera IP Standby</span>
+                    </div>
+                  )}
+                </>
               )}
               
-              {showLiveFeed && (
-                <div className="absolute top-6 left-6 bg-red-600 text-white px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest animate-pulse flex items-center z-10">
+              {(showLiveFeed || cameraType === 'local') && (
+                <div className="absolute top-6 left-6 bg-red-600 text-white px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest animate-pulse flex items-center z-10 shadow-lg border border-red-500/50">
                   <div className="w-2 h-2 bg-white rounded-full mr-2"></div>
-                  LIVE
+                  LIVE FEED
                 </div>
               )}
               
               {ocrStatus && (
-                <div className="absolute bottom-6 left-6 right-6 bg-slate-900/80 backdrop-blur text-emerald-400 p-3 rounded-xl text-xs font-mono font-bold flex items-center whitespace-pre-wrap shadow-lg border border-slate-700/50 z-10">
-                  {isScanning && <RefreshCw className="w-4 h-4 mr-2 animate-spin text-emerald-500" />}
-                  {ocrStatus}
+                <div className="absolute bottom-6 left-6 right-6 bg-slate-900/90 backdrop-blur-xl text-emerald-400 p-4 rounded-2xl text-[11px] font-mono font-black flex items-center shadow-2xl border border-white/10 z-10 animate-in fade-in slide-in-from-bottom-2">
+                  <div className="flex-1 flex items-center">
+                    {isScanning && <RefreshCw className="w-4 h-4 mr-3 animate-spin text-emerald-500" />}
+                    <span className="uppercase tracking-tight">{ocrStatus}</span>
+                  </div>
+                  {lastSnapshot && !isScanning && (
+                    <button onClick={() => setLastSnapshot(null)} className="ml-2 text-slate-500 hover:text-white transition-colors">
+                      <RefreshCw className="w-3 h-3" />
+                    </button>
+                  )}
                 </div>
               )}
             </div>

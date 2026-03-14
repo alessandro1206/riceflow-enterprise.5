@@ -315,12 +315,28 @@ export default function App() {
   };
 
   const onCloseTicket = (ticketId: string, closeData: any) => {
-    setState((prev: any) => ({
-      ...prev,
-      tickets: (prev.tickets || []).map((t: any) =>
-        t.id === ticketId ? { ...t, ...closeData, status: 'CLOSED' } : t
-      )
-    }));
+    setState((prev: any) => {
+      // Find the ticket being closed to get its netWeight and pile assignment
+      const ticketToClose = prev.tickets?.find((t: any) => t.id === ticketId);
+      
+      // Update the specific Pile (Tumpukan) weight
+      let newPiles = prev.piles ? [...prev.piles] : [];
+      if (ticketToClose && ticketToClose.pile && closeData.netWeight) {
+        newPiles = newPiles.map((p: any) => 
+          p.id === ticketToClose.pile 
+            ? { ...p, currentWeight: p.currentWeight + closeData.netWeight } 
+            : p
+        );
+      }
+
+      return {
+        ...prev,
+        piles: newPiles,
+        tickets: (prev.tickets || []).map((t: any) =>
+          t.id === ticketId ? { ...t, ...closeData, status: 'CLOSED' } : t
+        )
+      };
+    });
   };
 
   const onUpdateTicketFinancials = (ticketId: string, financials: any) => {
@@ -333,12 +349,32 @@ export default function App() {
   };
 
   const onMarkPaid = (ticketId: string) => {
-    setState((prev: any) => ({
-      ...prev,
-      tickets: (prev.tickets || []).map((t: any) =>
-        t.id === ticketId ? { ...t, paid: true, paidDate: new Date().toISOString().split('T')[0] } : t
-      )
-    }));
+    setState((prev: any) => {
+      const ticket = prev.tickets?.find((t:any) => t.id === ticketId);
+      if (ticket) {
+        const totalAmount = (ticket.netWeight || 0) * (ticket.price || 0);
+        // Automatically log the Final Entry to the Journal
+        // Debiting Persediaan Gabah (increasing inventory value) and Crediting Kas & Bank (decreasing cash)
+        const newEntry = {
+          id: `JRN-${Date.now()}`,
+          date: new Date().toISOString().split('T')[0],
+          description: `Pembayaran Lunas: Tagihan ${ticket.supplierName} (Tiket ${ticket.id})`,
+          lines: [
+            { accountId: '12001', debit: totalAmount, credit: 0 },
+            { accountId: '11001', debit: 0, credit: totalAmount }
+          ]
+        };
+        
+        return {
+          ...prev,
+          journal: [...(prev.journal || []), newEntry],
+          tickets: (prev.tickets || []).map((t: any) =>
+            t.id === ticketId ? { ...t, paid: true, paidDate: new Date().toISOString().split('T')[0] } : t
+          )
+        };
+      }
+      return prev;
+    });
   };
 
   const handleTabChange = (tab: string) => {
