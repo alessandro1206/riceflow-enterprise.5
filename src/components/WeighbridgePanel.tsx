@@ -87,8 +87,20 @@ export const WeighbridgePanel: React.FC<WeighbridgePanelProps> = ({
       const match = cleanPlate.match(/[A-Z]{1,2}\s?\d{1,4}\s?[A-Z]{1,3}/);
       
       if (match) {
-        setOpenForm(prev => ({ ...prev, nopol: match[0] }));
-        setOcrStatus('Berhasil!');
+        if (activeSubTab === 'open') {
+          setOpenForm(prev => ({ ...prev, nopol: match[0] }));
+          setOcrStatus('Berhasil!');
+        } else {
+          // find matching ticket from OPEN tickets
+          const openTicks = state.tickets?.filter((t: any) => t.status === 'OPEN') || [];
+          const found = openTicks.find((t: any) => t.nopol.replace(/\s/g, '') === match[0].replace(/\s/g, ''));
+          if (found) {
+            setCloseForm(prev => ({ ...prev, ticketId: found.id }));
+            setOcrStatus('Berhasil! Tiket ditemukan otomatis.');
+          } else {
+            setOcrStatus(`Plat terdeteksi (${match[0]}) tapi tidak ada di tiket Aktif.`);
+          }
+        }
       } else {
         setOcrStatus('Plat tidak terdeteksi, silakan coba lagi atau ketik manual.');
       }
@@ -134,19 +146,17 @@ export const WeighbridgePanel: React.FC<WeighbridgePanelProps> = ({
           </h2>
           <p className="text-slate-500 font-medium mt-1">Registrasi Truk Masuk & Keluar (Dua Langkah)</p>
         </div>
-        {activeSubTab === 'open' && (
-          <button 
-            type="button"
-            onClick={() => setCameraSettings({...cameraSettings, showSettings: !cameraSettings.showSettings})}
-            className="p-3 bg-slate-100 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition-colors shadow-sm flex items-center font-bold text-sm"
-          >
-            <Settings className="w-4 h-4 mr-2" />
-            Setelan Kamera Layimbang
-          </button>
-        )}
+        <button 
+          type="button"
+          onClick={() => setCameraSettings({...cameraSettings, showSettings: !cameraSettings.showSettings})}
+          className="p-3 bg-slate-100 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition-colors shadow-sm flex items-center font-bold text-sm"
+        >
+          <Settings className="w-4 h-4 mr-2" />
+          Setelan Kamera Layimbang
+        </button>
       </div>
 
-      {cameraSettings.showSettings && activeSubTab === 'open' && (
+      {cameraSettings.showSettings && (
         <div className="bg-slate-800 p-6 rounded-3xl text-white shadow-xl flex gap-4 items-end animate-in fade-in slide-in-from-top-4">
           <div className="flex-1">
              <label className="text-xs font-black uppercase tracking-widest text-slate-400 mb-2 block">IP Camera Dahua</label>
@@ -190,66 +200,66 @@ export const WeighbridgePanel: React.FC<WeighbridgePanelProps> = ({
       </div>
 
       <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-200">
-        {activeSubTab === 'open' ? (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-            {/* Kamera & ALPR Feed Section */}
-            <div className="space-y-6">
-              <div className="bg-slate-900 rounded-3xl p-2 relative shadow-inner overflow-hidden border-4 border-slate-800">
-                {showLiveFeed ? (
-                  <img 
-                    src={`http://${cameraSettings.ip}/cgi-bin/mjpg/video.cgi?subtype=1&loginuse=${cameraSettings.user}&loginpas=${cameraSettings.pass}`}
-                    alt="Live Feed"
-                    className="w-full aspect-video object-cover rounded-xl"
-                  />
-                ) : lastSnapshot ? (
-                  <img src={lastSnapshot} alt="Snapshot" className="w-full aspect-video object-cover rounded-xl" />
-                ) : (
-                  <div className="w-full aspect-video bg-slate-800 rounded-xl flex flex-col items-center justify-center text-slate-600">
-                    <Camera className="w-12 h-12 mb-2 opacity-50" />
-                    <span className="font-bold text-sm">Kamera Offline / Standby</span>
-                  </div>
-                )}
-                
-                {showLiveFeed && (
-                  <div className="absolute top-6 left-6 bg-red-600 text-white px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest animate-pulse flex items-center z-10">
-                    <div className="w-2 h-2 bg-white rounded-full mr-2"></div>
-                    LIVE
-                  </div>
-                )}
-                
-                {ocrStatus && (
-                  <div className="absolute bottom-6 left-6 right-6 bg-slate-900/80 backdrop-blur text-emerald-400 p-3 rounded-xl text-xs font-mono font-bold flex items-center whitespace-pre-wrap shadow-lg border border-slate-700/50 z-10">
-                    {isScanning && <RefreshCw className="w-4 h-4 mr-2 animate-spin text-emerald-500" />}
-                    {ocrStatus}
-                  </div>
-                )}
-              </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+          {/* Kamera & ALPR Feed Section - Shared between open/close */}
+          <div className="space-y-6">
+            <div className="bg-slate-900 rounded-3xl p-2 relative shadow-inner overflow-hidden border-4 border-slate-800">
+              {showLiveFeed ? (
+                <img 
+                  src={`http://${cameraSettings.ip}/cgi-bin/mjpg/video.cgi?subtype=1&loginuse=${cameraSettings.user}&loginpas=${cameraSettings.pass}`}
+                  alt="Live Feed"
+                  className="w-full aspect-video object-cover rounded-xl"
+                />
+              ) : lastSnapshot ? (
+                <img src={lastSnapshot} alt="Snapshot" className="w-full aspect-video object-cover rounded-xl" />
+              ) : (
+                <div className="w-full aspect-video bg-slate-800 rounded-xl flex flex-col items-center justify-center text-slate-600">
+                  <Camera className="w-12 h-12 mb-2 opacity-50" />
+                  <span className="font-bold text-sm">Kamera Offline / Standby</span>
+                </div>
+              )}
               
-              <div className="flex space-x-3">
-                <button
-                  type="button"
-                  onClick={captureAndScan}
-                  disabled={isScanning}
-                  className="flex-1 bg-emerald-600 text-white py-4 rounded-2xl font-black flex items-center justify-center space-x-2 hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-500/20 disabled:opacity-50"
-                >
-                  {isScanning ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Camera className="w-5 h-5" />}
-                  <span>{isScanning ? 'Membaca Plat...' : 'Ambil Snapshot & AI Scan'}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowLiveFeed(!showLiveFeed)}
-                  className={`px-6 py-4 rounded-2xl font-black flex items-center justify-center transition-all shadow-md ${
-                    showLiveFeed ? 'bg-red-50 text-red-600 border-2 border-red-100' : 'bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200'
-                  }`}
-                >
-                  <div className={`w-3 h-3 rounded-full mr-2 ${showLiveFeed ? 'bg-red-600 animate-pulse' : 'bg-slate-400'}`}></div>
-                  {showLiveFeed ? 'STOP' : 'LIVE'}
-                </button>
-              </div>
+              {showLiveFeed && (
+                <div className="absolute top-6 left-6 bg-red-600 text-white px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest animate-pulse flex items-center z-10">
+                  <div className="w-2 h-2 bg-white rounded-full mr-2"></div>
+                  LIVE
+                </div>
+              )}
+              
+              {ocrStatus && (
+                <div className="absolute bottom-6 left-6 right-6 bg-slate-900/80 backdrop-blur text-emerald-400 p-3 rounded-xl text-xs font-mono font-bold flex items-center whitespace-pre-wrap shadow-lg border border-slate-700/50 z-10">
+                  {isScanning && <RefreshCw className="w-4 h-4 mr-2 animate-spin text-emerald-500" />}
+                  {ocrStatus}
+                </div>
+              )}
             </div>
+            
+            <div className="flex space-x-3">
+              <button
+                type="button"
+                onClick={captureAndScan}
+                disabled={isScanning}
+                className="flex-1 bg-emerald-600 text-white py-4 rounded-2xl font-black flex items-center justify-center space-x-2 hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-500/20 disabled:opacity-50"
+              >
+                {isScanning ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Camera className="w-5 h-5" />}
+                <span>{isScanning ? 'Membaca Plat...' : 'Ambil Snapshot & AI Scan'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowLiveFeed(!showLiveFeed)}
+                className={`px-6 py-4 rounded-2xl font-black flex items-center justify-center transition-all shadow-md ${
+                  showLiveFeed ? 'bg-red-50 text-red-600 border-2 border-red-100' : 'bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200'
+                }`}
+              >
+                <div className={`w-3 h-3 rounded-full mr-2 ${showLiveFeed ? 'bg-red-600 animate-pulse' : 'bg-slate-400'}`}></div>
+                {showLiveFeed ? 'STOP' : 'LIVE'}
+              </button>
+            </div>
+          </div>
 
-            {/* Form Pendaftaran Truk Masuk */}
-            <form onSubmit={handleOpenSubmit} className="space-y-6 flex flex-col justify-between">
+          <div>
+          {activeSubTab === 'open' ? (
+            <form onSubmit={handleOpenSubmit} className="space-y-6 flex flex-col justify-between h-full">
               <div className="space-y-6">
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-slate-500 uppercase flex items-center">
@@ -314,93 +324,87 @@ export const WeighbridgePanel: React.FC<WeighbridgePanelProps> = ({
               </div>
             </div>
 
-            <button
-              type="submit"
-              className="w-full bg-slate-900 hover:bg-slate-800 text-white font-black py-4 rounded-xl transition-all shadow-xl tracking-widest mt-auto"
-            >
-              BUKA TIKET TIMBANGAN
-            </button>
-          </form>
-        </div>
-      ) : (
-          <form onSubmit={handleCloseSubmit} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2 col-span-1 md:col-span-2">
-                <label className="text-xs font-bold text-slate-500 uppercase flex items-center">
-                  <Clock className="w-3 h-3 mr-1" />
-                  Pilih Tiket Aktif (Truk di Dalam)
-                </label>
-                <select
-                  required
-                  value={closeForm.ticketId}
-                  onChange={e => setCloseForm({...closeForm, ticketId: e.target.value})}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 font-bold"
-                >
-                  <option value="">-- Pilih Tiket / Plat Nomor --</option>
-                  {openTickets.map((t: any) => (
-                    <option key={t.id} value={t.id}>
-                      {t.nopol} - {t.supplierName} (Masuk: {t.timeIn})
-                    </option>
-                  ))}
-                </select>
-                {openTickets.length === 0 && (
-                  <p className="text-xs text-red-500 mt-1 font-medium">Tidak ada truk yang sedang di dalam area (Buka Tiket kosong).</p>
+              <button
+                type="submit"
+                className="w-full bg-slate-900 hover:bg-slate-800 text-white font-black py-4 rounded-xl transition-all shadow-xl tracking-widest mt-auto mb-2"
+              >
+                BUKA TIKET TIMBANGAN
+              </button>
+            </form>
+          ) : (
+            <form onSubmit={handleCloseSubmit} className="space-y-6 flex flex-col justify-between h-full">
+              <div className="grid grid-cols-1 gap-6">
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-500 uppercase flex items-center">
+                    <Camera className="w-3 h-3 mr-1" />
+                    Plat Nomor Terdeteksi (Otomatis dari Snapshot)
+                  </label>
+                  <div className="w-full bg-slate-100 border border-slate-200 rounded-xl p-4 flex items-center justify-between">
+                    <span className="font-mono font-black text-xl text-slate-800 tracking-wider">
+                      {state.tickets?.find((t:any) => t.id === closeForm.ticketId)?.nopol || 'BELUM SCAN PLAT NOMOR'}
+                    </span>
+                    {closeForm.ticketId && <CheckCircle2 className="w-6 h-6 text-emerald-500" />}
+                  </div>
+                  {openTickets.length === 0 && (
+                    <p className="text-xs text-red-500 mt-1 font-medium">Tidak ada truk yang sedang di dalam area (Buka Tiket kosong).</p>
+                  )}
+                </div>
+
+                {closeForm.ticketId && (
+                  <>
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-slate-500 uppercase flex items-center">
+                        <Scale className="w-3 h-3 mr-1" />
+                        Berat Kotor Awal (Gross) - KG
+                      </label>
+                      <input
+                        type="number"
+                        disabled
+                        value={state.tickets?.find((t:any) => t.id === closeForm.ticketId)?.grossWeight || ''}
+                        className="w-full bg-slate-200 border border-slate-300 rounded-xl p-3 text-slate-600 font-mono text-lg cursor-not-allowed"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-slate-500 uppercase flex items-center text-amber-600">
+                        <Scale className="w-3 h-3 mr-1" />
+                        Berat Kosong (Tare) - KG
+                      </label>
+                      <input
+                        type="number"
+                        required
+                        min="0"
+                        placeholder="0"
+                        value={closeForm.tareWeight}
+                        onChange={e => setCloseForm({...closeForm, tareWeight: e.target.value})}
+                        className="w-full bg-amber-50 border border-amber-200 rounded-xl p-3 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 font-mono text-lg text-amber-900"
+                      />
+                    </div>
+                    
+                    {closeForm.tareWeight && (
+                      <div className="bg-emerald-50 rounded-xl p-4 border border-emerald-200 flex justify-between items-center">
+                        <span className="font-bold text-emerald-800">Estimasi Tonase Bersih (Netto):</span>
+                        <span className="font-black text-2xl text-emerald-600 font-mono flex items-center">
+                          {(state.tickets?.find((t:any) => t.id === closeForm.ticketId)?.grossWeight || 0) - parseFloat(closeForm.tareWeight)} 
+                          <span className="text-sm ml-1 text-emerald-500">KG</span>
+                        </span>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
 
-              {closeForm.ticketId && (
-                <>
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-slate-500 uppercase flex items-center">
-                      <Scale className="w-3 h-3 mr-1" />
-                      Berat Kotor Awal (Gross) - KG
-                    </label>
-                    <input
-                      type="number"
-                      disabled
-                      value={state.tickets.find((t:any) => t.id === closeForm.ticketId)?.grossWeight || ''}
-                      className="w-full bg-slate-200 border border-slate-300 rounded-xl p-3 text-slate-600 font-mono text-lg cursor-not-allowed"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-slate-500 uppercase flex items-center text-amber-600">
-                      <Scale className="w-3 h-3 mr-1" />
-                      Berat Kosong (Tare) - KG
-                    </label>
-                    <input
-                      type="number"
-                      required
-                      min="0"
-                      placeholder="0"
-                      value={closeForm.tareWeight}
-                      onChange={e => setCloseForm({...closeForm, tareWeight: e.target.value})}
-                      className="w-full bg-amber-50 border border-amber-200 rounded-xl p-3 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 font-mono text-lg text-amber-900"
-                    />
-                  </div>
-                  
-                  {closeForm.tareWeight && (
-                    <div className="col-span-1 md:col-span-2 bg-emerald-50 rounded-xl p-4 border border-emerald-200 flex justify-between items-center">
-                      <span className="font-bold text-emerald-800">Estimasi Tonase Bersih (Netto):</span>
-                      <span className="font-black text-2xl text-emerald-600 font-mono flex items-center">
-                        {(state.tickets.find((t:any) => t.id === closeForm.ticketId)?.grossWeight || 0) - parseFloat(closeForm.tareWeight)} 
-                        <span className="text-sm ml-1 text-emerald-500">KG</span>
-                      </span>
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-
-            <button
-              type="submit"
-              disabled={!closeForm.ticketId || !closeForm.tareWeight}
-              className="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-4 rounded-xl transition-all shadow-lg shadow-amber-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              TUTUP TIKET & HITUNG TONASE
-            </button>
-          </form>
-        )}
+              <button
+                type="submit"
+                disabled={!closeForm.ticketId || !closeForm.tareWeight}
+                className="w-full bg-amber-500 hover:bg-amber-600 text-white font-black py-4 rounded-xl transition-all shadow-xl tracking-widest mt-auto mb-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                TUTUP TIKET & HITUNG TONASE
+              </button>
+            </form>
+          )}
+          </div>
+        </div>
       </div>
       
       {/* List Recent Tickets */}

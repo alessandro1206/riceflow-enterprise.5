@@ -223,16 +223,28 @@ export default function App() {
         ...prev.expenseBook,
         {
           ...expense,
-          id: `EXP-${Date.now()}`,
-          date: new Date().toISOString().split('T')[0],
+          id: expense.id || `EXP-${Date.now()}`,
+          date: expense.date || new Date().toISOString().split('T')[0],
         },
       ],
     }));
 
-    addJournalEntry(`Buku Biaya: ${expense.desc}`, [
-      { accountId: expense.cat, debit: expense.amount, credit: 0 },
-      { accountId: '11001', debit: 0, credit: expense.amount },
-    ]);
+    if (expense.lines) {
+      const debitLines = expense.lines.map((l: any) => ({
+        accountId: l.accountId,
+        debit: l.amount,
+        credit: 0
+      }));
+      addJournalEntry(`Kas Keluar: ${expense.desc} (${expense.id || 'Manual'})`, [
+        ...debitLines,
+        { accountId: expense.sourceAccount || '11001', debit: 0, credit: expense.amount },
+      ]);
+    } else {
+      addJournalEntry(`Buku Biaya: ${expense.desc}`, [
+        { accountId: expense.cat, debit: expense.amount, credit: 0 },
+        { accountId: '11001', debit: 0, credit: expense.amount },
+      ]);
+    }
   };
 
   const onSaleSubmit = (order: any, isTrading: boolean) => {
@@ -408,7 +420,11 @@ export default function App() {
         <PricePanel state={state} onUpdatePrice={onUpdatePrice} />
       )}
       {activeTab === 'accounting' && (
-        <AccountingPanel state={state} onYearEndClose={onYearEndClose} />
+        <AccountingPanel 
+          state={state} 
+          onYearEndClose={onYearEndClose} 
+          onAddExpense={onAddExpense}
+        />
       )}
       {activeTab === 'settings' && (
         <UserManagementPanel 

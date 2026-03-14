@@ -1,48 +1,19 @@
 import {
   useState,
-  useEffect
 } from 'react';
 import {
-  Scale,
-  Printer,
-  Truck,
-  User,
-  Save,
   Combine,
   Plus,
   Trash2,
-  Camera,
-  RefreshCw,
-  Settings,
+  Scale,
 } from 'lucide-react';
-import Tesseract from 'tesseract.js';
 
 export const ProductionPanel = ({
   state,
   onMillingSubmit,
   onAddExpense
 }: any) => {
-  const [activeTab, setActiveTab] = useState('timbangan');
-  const [ticket, setTicket] = useState({
-    nopol: '',
-    driver: '',
-    material: 'GKG',
-    gross: 0,
-    tare: 0,
-    netto: 0,
-  });
-
-  // Camera & ALPR State
-  const [cameraSettings, setCameraSettings] = useState({
-    ip: '192.168.31.190',
-    user: 'admin',
-    pass: 'Admin123',
-    showSettings: false
-  });
-  const [isScanning, setIsScanning] = useState(false);
-  const [showLiveFeed, setShowLiveFeed] = useState(false);
-  const [lastSnapshot, setLastSnapshot] = useState<string | null>(null);
-  const [ocrStatus, setOcrStatus] = useState('');
+const [activeTab, setActiveTab] = useState('giling');
 
   // State Baru Giling Multiple Input & Output
   const [millInputs, setMillInputs] = useState([{
@@ -56,25 +27,6 @@ export const ProductionPanel = ({
 
   // State Biaya
   const [exp, setExp] = useState({ desc: '', amount: 0, cat: '61001' });
-
-  // --- INTEGRATED SCALE LISTENER ---
-  useEffect(() => {
-    // Listens for 'scale-data' events from the Electron wrapper
-    if ((window as any).electron) {
-      (window as any).electron.on('scale-data', (weight: string) => {
-        setTicket((prev) => ({ ...prev, gross: Number(weight) }));
-      });
-    }
-  }, []);
-
-  // Automatic Netto Calculation
-  useEffect(() => {
-    setTicket((prev) => ({ ...prev, netto: prev.gross - prev.tare }));
-  }, [ticket.gross, ticket.tare]);
-
-  const handlePrint = () => {
-    window.print();
-  };
 
   const handleGilingMixing = () => {
     const totalInput = millInputs.reduce((acc, cur) => acc + cur.weight, 0);
@@ -104,69 +56,7 @@ export const ProductionPanel = ({
     alert("Biaya Operasional Tercatat!");
   };
 
-  const handleSaveTicket = async () => {
-    if (!ticket.nopol || ticket.netto <= 0) return alert('Data tidak lengkap!');
 
-    const response = await fetch(
-      'https://sabrent.pythonanywhere.com/api/scale/ticket',
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(ticket),
-      }
-    );
-
-    if (response.ok) {
-      alert('Tiket Berhasil Disimpan!');
-      setTicket({
-        nopol: '',
-        driver: '',
-        material: 'GKG',
-        gross: 0,
-        tare: 0,
-        netto: 0,
-      });
-      setLastSnapshot(null);
-    }
-  };
-
-  const captureAndScan = async () => {
-    setIsScanning(true);
-    setOcrStatus('Mengambil Gambar...');
-    
-    // Dahua Snapshot URL
-    const snapshotUrl = `http://${cameraSettings.ip}/cgi-bin/snapshot.cgi?loginuse=${cameraSettings.user}&loginpas=${cameraSettings.pass}`;
-    
-    try {
-      const response = await fetch(snapshotUrl);
-      const blob = await response.blob();
-      const imageUrl = URL.createObjectURL(blob);
-      setLastSnapshot(imageUrl);
-
-      setOcrStatus('Mengenali Plat Nomor (Local AI)...');
-      
-      const { data: { text } } = await Tesseract.recognize(imageUrl, 'eng', {
-        logger: m => console.log(m)
-      });
-
-      // Filter for Indonesian Plate Pattern (simplified: capital letters and numbers)
-      const cleanPlate = text.toUpperCase().replace(/[^A-Z0-9\s]/g, '').trim();
-      const match = cleanPlate.match(/[A-Z]{1,2}\s?\d{1,4}\s?[A-Z]{1,3}/);
-      
-      if (match) {
-        setTicket(prev => ({ ...prev, nopol: match[0] }));
-        setOcrStatus('Berhasil!');
-      } else {
-        setOcrStatus('Plat tidak terdeteksi, silakan coba lagi.');
-      }
-    } catch (err) {
-      console.error(err);
-      setOcrStatus('Gagal mengambil gambar dari kamera.');
-      alert('Pastikan kamera terhubung di IP ' + cameraSettings.ip);
-    } finally {
-      setIsScanning(false);
-    }
-  };
 
   return (
     <div className="space-y-10 animate-fade-in pb-20">
@@ -180,7 +70,7 @@ export const ProductionPanel = ({
           </p>
         </div>
         <div className="flex bg-slate-100 p-1 rounded-2xl">
-          {['timbangan', 'giling', 'biaya'].map((tab) => (
+          {['giling', 'biaya'].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -196,196 +86,7 @@ export const ProductionPanel = ({
         </div>
       </header>
 
-      {activeTab === 'timbangan' && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-          <div className="glass-panel p-10 no-print">
-            <div className="flex justify-between items-center mb-10">
-              <h3 className="font-black text-slate-800 uppercase text-xs tracking-widest">Registrasi Tiket</h3>
-              <button 
-                onClick={() => setCameraSettings({...cameraSettings, showSettings: !cameraSettings.showSettings})}
-                className="p-2 text-slate-400 hover:text-emerald-600 transition-colors"
-              >
-                <Settings className="w-5 h-5" />
-              </button>
-            </div>
 
-            <div className="space-y-8">
-              <div className="grid grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-[10px] font-black text-slate-400 mb-2 uppercase tracking-widest ml-1">Nomor Polisi</label>
-                  <div className="relative group">
-                    <Truck className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300 group-focus-within:text-emerald-500 transition-colors" />
-                    <input
-                      className="w-full p-4 pl-12 glass-input font-black text-xl uppercase"
-                      value={ticket.nopol}
-                      onChange={(e) => setTicket({ ...ticket, nopol: e.target.value.toUpperCase() })}
-                      placeholder="L 1234 AB"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-[10px] font-black text-slate-400 mb-2 uppercase tracking-widest ml-1">Nama Sopir</label>
-                  <div className="relative group">
-                    <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300 group-focus-within:text-emerald-500 transition-colors" />
-                    <input
-                      className="w-full p-4 pl-12 glass-input font-bold"
-                      value={ticket.driver}
-                      onChange={(e) => setTicket({ ...ticket, driver: e.target.value })}
-                      placeholder="Input Nama"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-[10px] font-black text-slate-400 mb-2 uppercase tracking-widest ml-1">Jenis Material</label>
-                  <select
-                    className="w-full p-4 glass-input font-bold"
-                    value={ticket.material}
-                    onChange={(e) => setTicket({ ...ticket, material: e.target.value })}
-                  >
-                    <option value="GKG">Gabah Giling (GKG)</option>
-                    <option value="GKP">Gabah Panen (GKP)</option>
-                    <option value="RICE">Beras Setengah Jadi</option>
-                  </select>
-                </div>
-                <div className="bg-emerald-50/50 p-4 rounded-3xl border border-emerald-100 flex items-center justify-between">
-                   <div>
-                     <p className="text-[10px] font-black text-emerald-700 uppercase mb-1">Live Scale</p>
-                     <p className="text-2xl font-black text-emerald-900">{ticket.gross.toLocaleString()}<small className="text-xs ml-1">KG</small></p>
-                   </div>
-                   <div className="w-10 h-10 bg-emerald-500/10 rounded-full flex items-center justify-center animate-pulse">
-                     <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
-                   </div>
-                </div>
-              </div>
-
-              <div className="pt-6 space-y-4">
-                {showLiveFeed && (
-                  <div className="relative aspect-video rounded-3xl overflow-hidden bg-slate-900 border-4 border-slate-800 shadow-inner">
-                    <img 
-                      src={`http://${cameraSettings.ip}/cgi-bin/mjpg/video.cgi?subtype=1&loginuse=${cameraSettings.user}&loginpas=${cameraSettings.pass}`}
-                      alt="Live Feed"
-                      className="w-full h-full object-cover"
-                    />
-                    <div className="absolute top-4 left-4 bg-red-600 text-white px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest animate-pulse flex items-center">
-                      <div className="w-2 h-2 bg-white rounded-full mr-2"></div>
-                      LIVE
-                    </div>
-                  </div>
-                )}
-                
-                <div className="flex space-x-3">
-                  <button
-                    onClick={captureAndScan}
-                    disabled={isScanning}
-                    className="flex-1 bg-slate-900 text-white py-5 rounded-3xl font-black flex items-center justify-center space-x-3 hover:bg-emerald-600 transition-all shadow-xl disabled:opacity-50"
-                  >
-                    {isScanning ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Camera className="w-5 h-5" />}
-                    <span>{isScanning ? 'SCAN' : 'AMBIL SNAPSHOT'}</span>
-                  </button>
-                  <button
-                    onClick={() => setShowLiveFeed(!showLiveFeed)}
-                    className={`px-6 py-5 rounded-3xl font-black flex items-center justify-center transition-all shadow-xl ${
-                      showLiveFeed ? 'bg-red-50 text-red-600 border-2 border-red-100' : 'bg-emerald-50 text-emerald-600 border-2 border-emerald-100 hover:bg-emerald-100'
-                    }`}
-                  >
-                    <div className={`w-3 h-3 rounded-full mr-2 ${showLiveFeed ? 'bg-red-600 animate-pulse' : 'bg-emerald-400'}`}></div>
-                    {showLiveFeed ? 'STOP' : 'LIVE'}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div>
-             {/* TICKET PREVIEW */}
-            <div className="glass-panel p-10 bg-white relative overflow-hidden shadow-2xl shadow-emerald-900/10">
-              <div className="absolute top-0 right-0 w-40 h-40 bg-emerald-500/5 -translate-y-10 translate-x-10 rounded-full blur-3xl"></div>
-              
-              <div className="flex justify-between items-start border-b-2 border-slate-900 pb-8 mb-8">
-                <div className="flex items-center space-x-4">
-                  <img src="/weighbridge_icon.png" alt="Logo" className="w-14 h-14 rounded-2xl shadow-xl" />
-                  <div>
-                    <h1 className="text-2xl font-black text-slate-900 tracking-tighter">PP BUMI MAS</h1>
-                    <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Enterprise Infrastructure</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <h2 className="text-lg font-black text-slate-900 uppercase">TIKET TIMBANGAN</h2>
-                  <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase">Cloud ID: RF-{Date.now().toString().slice(-6)}</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-10 mb-10">
-                <div className="space-y-4">
-                  <div className="flex justify-between border-b border-slate-100 pb-2">
-                    <span className="text-[10px] font-black text-slate-400 uppercase">NOMOR POLISI</span>
-                    <span className="text-sm font-black text-slate-800">{ticket.nopol || '---'}</span>
-                  </div>
-                  <div className="flex justify-between border-b border-slate-100 pb-2">
-                    <span className="text-[10px] font-black text-slate-400 uppercase">DRIVER</span>
-                    <span className="text-sm font-black text-slate-800">{ticket.driver || '---'}</span>
-                  </div>
-                </div>
-                <div className="space-y-4">
-                   <div className="flex justify-between border-b border-slate-100 pb-2">
-                    <span className="text-[10px] font-black text-slate-400 uppercase">MATERIAL</span>
-                    <span className="text-sm font-black text-emerald-700">{ticket.material}</span>
-                  </div>
-                   <div className="flex justify-between border-b border-slate-100 pb-2">
-                    <span className="text-[10px] font-black text-slate-400 uppercase">TANGGAL</span>
-                    <span className="text-sm font-black text-slate-800">{new Date().toLocaleDateString('id-ID')}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-6 mb-12">
-                <div className="p-4 bg-slate-50 rounded-2xl">
-                   <p className="text-[9px] font-black text-slate-400 uppercase mb-1 text-center">BRUTO</p>
-                   <p className="text-xl font-black text-center text-slate-900">{ticket.gross.toLocaleString()}</p>
-                </div>
-                <div className="p-4 bg-slate-50 rounded-2xl">
-                   <p className="text-[9px] font-black text-slate-400 uppercase mb-1 text-center">TARA</p>
-                   <p className="text-xl font-black text-center text-slate-900">{ticket.tare.toLocaleString()}</p>
-                </div>
-                <div className="p-4 bg-emerald-600 rounded-2xl shadow-lg shadow-emerald-900/20">
-                   <p className="text-[9px] font-black text-emerald-100 uppercase mb-1 text-center font-bold">NETTO</p>
-                   <p className="text-xl font-black text-center text-white">{ticket.netto.toLocaleString()}</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-12 text-center mt-12 pb-4">
-                <div>
-                   <div className="h-16 border-b border-slate-200 mb-2"></div>
-                   <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Pihak Sopir</p>
-                </div>
-                <div>
-                  <p className="text-[8px] font-black text-emerald-600 mb-2 uppercase tracking-[0.2em]">Validated by</p>
-                  <p className="font-black text-xs text-slate-800 mb-1 border-b inline-block px-4">AMICH ENTERPRISE</p>
-                </div>
-              </div>
-
-              <div className="mt-10 no-print flex space-x-4">
-                <button
-                  onClick={handleSaveTicket}
-                  className="flex-1 bg-emerald-600 text-white py-4 rounded-2xl font-black shadow-xl hover:bg-emerald-700 transition-all flex items-center justify-center space-x-2"
-                >
-                  <Save className="w-5 h-5" />
-                  <span>SIMPAN TICKET</span>
-                </button>
-                <button
-                  onClick={handlePrint}
-                  className="px-6 border-2 border-slate-200 text-slate-500 rounded-2xl hover:bg-slate-50 transition-colors"
-                >
-                  <Printer className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {activeTab === 'giling' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 animate-fade-in">

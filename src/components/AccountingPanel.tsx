@@ -1,14 +1,54 @@
-import React from 'react';
+import { useState } from 'react';
 import {
   BookOpen,
   Calculator,
   Save,
-  AlertCircle,
   DownloadCloud,
+  Plus,
+  Trash2,
+  FileText,
+  CreditCard,
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
-export const AccountingPanel = ({ state, onYearEndClose }: any) => {
+export const AccountingPanel = ({ state, onYearEndClose, onAddExpense }: any) => {
+  const [activeTab, setActiveTab] = useState('jurnal');
+  const [kkForm, setKkForm] = useState({
+    id: `KK-${Date.now()}`,
+    date: new Date().toISOString().split('T')[0],
+    desc: '',
+    sourceAccount: '11001',
+    lines: [{ accountId: '61001', desc: '', amount: 0 }]
+  });
+
+  const handleKasKeluarSubmit = (e: any) => {
+    e.preventDefault();
+    const totalAmount = kkForm.lines.reduce((sum, l) => sum + Number(l.amount || 0), 0);
+    if (totalAmount <= 0) return alert('Total jumlah kas keluar harus lebih dari 0');
+    if (!kkForm.desc) return alert('Keterangan utama transaksi harus diisi');
+    
+    for(const l of kkForm.lines) {
+      if (!l.amount || l.amount <= 0) return alert('Ada baris dengan nominal 0');
+    }
+
+    onAddExpense({
+       id: kkForm.id,
+       date: kkForm.date,
+       desc: kkForm.desc,
+       sourceAccount: kkForm.sourceAccount,
+       amount: totalAmount,
+       lines: kkForm.lines
+    });
+
+    alert('Form Kas Keluar Berhasil Dicatat ke Jurnal Umum!');
+    setKkForm({
+      id: `KK-${Date.now()}`,
+      date: new Date().toISOString().split('T')[0],
+      desc: '',
+      sourceAccount: '11001',
+      lines: [{ accountId: '61001', desc: '', amount: 0 }]
+    });
+  };
   // --- CORE ACCOUNTING CALCULATIONS ---
   const getBalance = (code: string) => {
     return state.journal.reduce((acc: number, j: any) => {
@@ -141,24 +181,42 @@ export const AccountingPanel = ({ state, onYearEndClose }: any) => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <header className="flex justify-between items-end mb-8">
+      <header className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 space-y-4 md:space-y-0">
         <div>
           <h2 className="text-3xl font-black text-slate-800 flex items-center">
             <BookOpen className="mr-3 text-emerald-600" /> PUSAT AKUNTANSI
           </h2>
-          <p className="text-slate-500">
-            Jurnal Umum, Neraca, & Standar Akuntansi (SAK)
+          <p className="text-slate-500 mt-1">
+            Jurnal Umum, Kas Keluar, & Laporan Keuangan
           </p>
         </div>
-        <button
-          onClick={exportToExcel}
-          className="bg-emerald-100 text-emerald-700 px-6 py-3 rounded-2xl font-black shadow-sm border border-emerald-200 hover:bg-emerald-200 flex items-center transition-colors"
-        >
-          <DownloadCloud className="w-5 h-5 mr-2" /> UNDUH EXCEL (SAK)
-        </button>
+        <div className="flex bg-slate-100 p-1 rounded-2xl shadow-inner">
+          {['jurnal', 'kas_keluar'].map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`px-6 py-2.5 rounded-xl font-black text-xs uppercase tracking-tight transition-all ${
+                activeTab === tab
+                  ? 'bg-white text-emerald-700 shadow-sm'
+                  : 'text-slate-400 hover:text-slate-600'
+              }`}
+            >
+              {tab === 'jurnal' ? 'JURNAL UMUM & LAPORAN' : 'FORM KAS KELUAR'}
+            </button>
+          ))}
+        </div>
       </header>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      
+      {activeTab === 'jurnal' && (
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-fade-in">
+        <div className="lg:col-span-3 flex justify-end">
+          <button
+            onClick={exportToExcel}
+            className="bg-emerald-100 text-emerald-700 px-6 py-3 rounded-2xl font-black shadow-sm border border-emerald-200 hover:bg-emerald-200 flex items-center transition-colors"
+          >
+            <DownloadCloud className="w-5 h-5 mr-2" /> UNDUH EXCEL (SAK)
+          </button>
+        </div>
         {/* WIDGET TUTUP BUKU */}
         <div className="lg:col-span-1 space-y-6">
           <div className="bg-slate-900 p-8 rounded-3xl text-white shadow-xl relative overflow-hidden">
@@ -275,7 +333,179 @@ export const AccountingPanel = ({ state, onYearEndClose }: any) => {
             )}
           </div>
         </div>
-      </div>
+        </div>
+      )}
+
+      {activeTab === 'kas_keluar' && (
+        <div className="animate-fade-in space-y-8 pb-10">
+          <form onSubmit={handleKasKeluarSubmit} className="glass-panel p-8 md:p-12 relative overflow-hidden bg-white shadow-xl">
+             <div className="absolute top-0 right-0 w-64 h-64 bg-slate-100 -translate-y-32 translate-x-32 rounded-full blur-3xl"></div>
+             
+             <div className="flex items-center space-x-4 mb-10 border-b border-slate-100 pb-6 relative z-10">
+               <div className="w-16 h-16 bg-slate-900 rounded-3xl flex items-center justify-center shadow-lg transform -rotate-6">
+                 <CreditCard className="w-8 h-8 text-emerald-400" />
+               </div>
+               <div>
+                  <h3 className="text-2xl font-black text-slate-800">Bukti Kas Keluar</h3>
+                  <p className="text-slate-500 font-medium mt-1">Pencatatan Biaya Operasional & Pengeluaran Kas/Bank</p>
+               </div>
+             </div>
+
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10 relative z-10">
+               <div className="space-y-6">
+                 <div>
+                   <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block">No Transaksi (Auto)</label>
+                   <input 
+                     type="text" 
+                     readOnly 
+                     value={kkForm.id}
+                     className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 font-mono font-bold text-slate-500 cursor-not-allowed"
+                   />
+                 </div>
+                 <div>
+                    <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block">Tanggal</label>
+                    <input 
+                      type="date"
+                      required
+                      value={kkForm.date}
+                      onChange={e => setKkForm({...kkForm, date: e.target.value})}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 font-bold text-slate-800 focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
+                    />
+                 </div>
+                 <div>
+                    <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block">Keluar Dari Akun (Sumber Dana)</label>
+                    <select
+                      value={kkForm.sourceAccount}
+                      onChange={e => setKkForm({...kkForm, sourceAccount: e.target.value})}
+                      className="w-full bg-emerald-50 border border-emerald-200 rounded-2xl p-4 font-black text-emerald-900 focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
+                    >
+                      {state.accounts.filter((a:any) => a.type === 'ASSET' && (a.name.toLowerCase().includes('kas') || a.name.toLowerCase().includes('bank'))).map((a:any) => (
+                        <option key={a.code} value={a.code}>{a.code} - {a.name}</option>
+                      ))}
+                    </select>
+                 </div>
+               </div>
+
+               <div className="bg-slate-50 p-6 rounded-3xl border border-slate-200 flex flex-col">
+                 <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block">Keterangan Utama</label>
+                 <textarea
+                   required
+                   placeholder="Contoh: Pembayaran operasional kantor minggu ke-2..."
+                   value={kkForm.desc}
+                   onChange={e => setKkForm({...kkForm, desc: e.target.value})}
+                   className="w-full flex-1 bg-white border border-slate-200 rounded-2xl p-4 font-medium text-slate-700 focus:ring-2 focus:ring-emerald-500 outline-none transition-all resize-none min-h-[120px]"
+                 ></textarea>
+               </div>
+             </div>
+
+             <div className="mb-10 relative z-10">
+               <div className="flex justify-between items-end mb-4 px-2">
+                 <h4 className="text-sm font-black text-slate-800 uppercase tracking-wider flex items-center">
+                   <FileText className="w-4 h-4 mr-2 text-slate-400" /> Detail Alokasi Biaya
+                 </h4>
+               </div>
+               
+               <div className="bg-slate-50 border border-slate-200 rounded-3xl overflow-hidden shadow-inner">
+                 <div className="grid grid-cols-12 gap-4 p-4 border-b border-slate-200 bg-slate-100 text-xs font-black text-slate-500 uppercase tracking-widest">
+                   <div className="col-span-3">Kode Akun (Beban)</div>
+                   <div className="col-span-4">Keterangan Rinci</div>
+                   <div className="col-span-4 text-right">Nominal (Rp)</div>
+                   <div className="col-span-1 text-center">Aksi</div>
+                 </div>
+                 
+                 <div className="divide-y divide-slate-100">
+                   {kkForm.lines.map((line, idx) => (
+                     <div key={idx} className="grid grid-cols-12 gap-4 p-4 items-center bg-white hover:bg-slate-50 transition-colors">
+                       <div className="col-span-3">
+                         <select
+                           value={line.accountId}
+                           onChange={e => {
+                             const newLines = [...kkForm.lines];
+                             newLines[idx].accountId = e.target.value;
+                             setKkForm({...kkForm, lines: newLines});
+                           }}
+                           className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 font-bold text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+                         >
+                           {state.accounts.map((a:any) => (
+                             <option key={a.code} value={a.code}>{a.code} - {a.name}</option>
+                           ))}
+                         </select>
+                       </div>
+                       <div className="col-span-4">
+                         <input
+                           type="text"
+                           placeholder="Rincian..."
+                           value={line.desc}
+                           onChange={e => {
+                             const newLines = [...kkForm.lines];
+                             newLines[idx].desc = e.target.value;
+                             setKkForm({...kkForm, lines: newLines});
+                           }}
+                           className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+                         />
+                       </div>
+                       <div className="col-span-4 relative group">
+                         <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">Rp</div>
+                         <input
+                           type="number"
+                           required
+                           min="0"
+                           value={line.amount || ''}
+                           onChange={e => {
+                             const newLines = [...kkForm.lines];
+                             newLines[idx].amount = Number(e.target.value);
+                             setKkForm({...kkForm, lines: newLines});
+                           }}
+                           className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 pl-10 text-right font-mono font-bold focus:ring-2 focus:ring-emerald-500 outline-none"
+                         />
+                       </div>
+                       <div className="col-span-1 flex justify-center">
+                         <button
+                           type="button"
+                           onClick={() => {
+                             if (kkForm.lines.length > 1) {
+                               const newLines = kkForm.lines.filter((_, i) => i !== idx);
+                               setKkForm({...kkForm, lines: newLines});
+                             }
+                           }}
+                           disabled={kkForm.lines.length === 1}
+                           className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-300"
+                         >
+                           <Trash2 className="w-5 h-5" />
+                         </button>
+                       </div>
+                     </div>
+                   ))}
+                 </div>
+                 
+                 <div className="p-4 bg-slate-50 flex justify-between items-center border-t border-slate-200">
+                   <button
+                     type="button"
+                     onClick={() => setKkForm({...kkForm, lines: [...kkForm.lines, { accountId: '61001', desc: '', amount: 0 }]})}
+                     className="text-sm font-black text-emerald-600 bg-emerald-100/50 hover:bg-emerald-100 px-4 py-2 rounded-xl transition-colors flex items-center"
+                   >
+                     <Plus className="w-4 h-4 mr-1" /> TAMBAH BARIS
+                   </button>
+                   <div className="flex items-center space-x-4 pr-12">
+                     <span className="text-xs font-black text-slate-400 uppercase tracking-widest">Total Keseluruhan:</span>
+                     <span className="text-2xl font-black font-mono text-emerald-600 underline decoration-emerald-200 underline-offset-4">
+                       Rp {kkForm.lines.reduce((s, l) => s + Number(l.amount || 0), 0).toLocaleString()}
+                     </span>
+                   </div>
+                 </div>
+               </div>
+             </div>
+
+             <button
+               type="submit"
+               className="w-full mt-8 bg-slate-900 text-white py-5 rounded-2xl font-black text-lg shadow-xl hover:bg-emerald-600 transition-all flex justify-center items-center group relative z-10"
+             >
+               <Save className="w-6 h-6 mr-2 group-hover:scale-110 transition-transform" /> 
+               SIMPAN BUKTI KAS KELUAR
+             </button>
+          </form>
+        </div>
+      )}
     </div>
   );
 };
