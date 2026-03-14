@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Scale, Truck, CheckCircle2, User, Database, Clock } from 'lucide-react';
+import { Scale, Truck, CheckCircle2, User, Database, Clock, Camera, RefreshCw, Settings } from 'lucide-react';
+import Tesseract from 'tesseract.js';
 
 interface WeighbridgePanelProps {
   state: any;
@@ -25,6 +26,18 @@ export const WeighbridgePanel: React.FC<WeighbridgePanelProps> = ({
     tareWeight: '',
   });
 
+  // Camera & ALPR State
+  const [cameraSettings, setCameraSettings] = useState({
+    ip: '192.168.31.190',
+    user: 'admin',
+    pass: 'Admin123',
+    showSettings: false
+  });
+  const [isScanning, setIsScanning] = useState(false);
+  const [showLiveFeed, setShowLiveFeed] = useState(false);
+  const [lastSnapshot, setLastSnapshot] = useState<string | null>(null);
+  const [ocrStatus, setOcrStatus] = useState('');
+
   const handleOpenSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!openForm.nopol || !openForm.supplierName || !openForm.grossWeight) return;
@@ -45,7 +58,47 @@ export const WeighbridgePanel: React.FC<WeighbridgePanelProps> = ({
       pileId: state.piles[0]?.id || '',
       grossWeight: '',
     });
+    setLastSnapshot(null);
+    setOcrStatus('');
     alert('Tiket Berhasil Dibuka!');
+  };
+
+  const captureAndScan = async () => {
+    setIsScanning(true);
+    setOcrStatus('Mengambil Gambar...');
+    
+    // Dahua Snapshot URL
+    const snapshotUrl = `http://${cameraSettings.ip}/cgi-bin/snapshot.cgi?loginuse=${cameraSettings.user}&loginpas=${cameraSettings.pass}`;
+    
+    try {
+      const response = await fetch(snapshotUrl);
+      const blob = await response.blob();
+      const imageUrl = URL.createObjectURL(blob);
+      setLastSnapshot(imageUrl);
+
+      setOcrStatus('Mengenali Plat Nomor (Local AI)...');
+      
+      const { data: { text } } = await Tesseract.recognize(imageUrl, 'eng', {
+        logger: m => console.log(m)
+      });
+
+      // Filter for Indonesian Plate Pattern (simplified: capital letters and numbers)
+      const cleanPlate = text.toUpperCase().replace(/[^A-Z0-9\s]/g, '').trim();
+      const match = cleanPlate.match(/[A-Z]{1,2}\s?\d{1,4}\s?[A-Z]{1,3}/);
+      
+      if (match) {
+        setOpenForm(prev => ({ ...prev, nopol: match[0] }));
+        setOcrStatus('Berhasil!');
+      } else {
+        setOcrStatus('Plat tidak terdeteksi, silakan coba lagi atau ketik manual.');
+      }
+    } catch (err) {
+      console.error(err);
+      setOcrStatus('Gagal mengambil gambar dari kamera.');
+      alert('Pastikan kamera terhubung di IP ' + cameraSettings.ip);
+    } finally {
+      setIsScanning(false);
+    }
   };
 
   const handleCloseSubmit = (e: React.FormEvent) => {
@@ -81,7 +134,35 @@ export const WeighbridgePanel: React.FC<WeighbridgePanelProps> = ({
           </h2>
           <p className="text-slate-500 font-medium mt-1">Registrasi Truk Masuk & Keluar (Dua Langkah)</p>
         </div>
+        {activeSubTab === 'open' && (
+          <button 
+            type="button"
+            onClick={() => setCameraSettings({...cameraSettings, showSettings: !cameraSettings.showSettings})}
+            className="p-3 bg-slate-100 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition-colors shadow-sm flex items-center font-bold text-sm"
+          >
+            <Settings className="w-4 h-4 mr-2" />
+            Setelan Kamera Layimbang
+          </button>
+        )}
       </div>
+
+      {cameraSettings.showSettings && activeSubTab === 'open' && (
+        <div className="bg-slate-800 p-6 rounded-3xl text-white shadow-xl flex gap-4 items-end animate-in fade-in slide-in-from-top-4">
+          <div className="flex-1">
+             <label className="text-xs font-black uppercase tracking-widest text-slate-400 mb-2 block">IP Camera Dahua</label>
+             <input value={cameraSettings.ip} onChange={e => setCameraSettings({...cameraSettings, ip: e.target.value})} className="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 focus:border-emerald-500 font-mono" />
+          </div>
+          <div className="flex-1">
+             <label className="text-xs font-black uppercase tracking-widest text-slate-400 mb-2 block">Username</label>
+             <input value={cameraSettings.user} onChange={e => setCameraSettings({...cameraSettings, user: e.target.value})} className="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 focus:border-emerald-500 font-mono" />
+          </div>
+          <div className="flex-1">
+             <label className="text-xs font-black uppercase tracking-widest text-slate-400 mb-2 block">Password</label>
+             <input type="password" value={cameraSettings.pass} onChange={e => setCameraSettings({...cameraSettings, pass: e.target.value})} className="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 focus:border-emerald-500 font-mono" />
+          </div>
+          <button onClick={() => setCameraSettings({...cameraSettings, showSettings: false})} className="bg-emerald-600 hover:bg-emerald-700 font-bold px-6 py-3 rounded-xl">Tutup</button>
+        </div>
+      )}
 
       <div className="flex space-x-2 border-b border-slate-200">
         <button
@@ -110,24 +191,82 @@ export const WeighbridgePanel: React.FC<WeighbridgePanelProps> = ({
 
       <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-200">
         {activeSubTab === 'open' ? (
-          <form onSubmit={handleOpenSubmit} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-500 uppercase flex items-center">
-                  <Truck className="w-3 h-3 mr-1" />
-                  Plat Nomor Truk
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Contoh: L 1234 AB"
-                  value={openForm.nopol}
-                  onChange={e => setOpenForm({...openForm, nopol: e.target.value.toUpperCase()})}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+            {/* Kamera & ALPR Feed Section */}
+            <div className="space-y-6">
+              <div className="bg-slate-900 rounded-3xl p-2 relative shadow-inner overflow-hidden border-4 border-slate-800">
+                {showLiveFeed ? (
+                  <img 
+                    src={`http://${cameraSettings.ip}/cgi-bin/mjpg/video.cgi?subtype=1&loginuse=${cameraSettings.user}&loginpas=${cameraSettings.pass}`}
+                    alt="Live Feed"
+                    className="w-full aspect-video object-cover rounded-xl"
+                  />
+                ) : lastSnapshot ? (
+                  <img src={lastSnapshot} alt="Snapshot" className="w-full aspect-video object-cover rounded-xl" />
+                ) : (
+                  <div className="w-full aspect-video bg-slate-800 rounded-xl flex flex-col items-center justify-center text-slate-600">
+                    <Camera className="w-12 h-12 mb-2 opacity-50" />
+                    <span className="font-bold text-sm">Kamera Offline / Standby</span>
+                  </div>
+                )}
+                
+                {showLiveFeed && (
+                  <div className="absolute top-6 left-6 bg-red-600 text-white px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest animate-pulse flex items-center z-10">
+                    <div className="w-2 h-2 bg-white rounded-full mr-2"></div>
+                    LIVE
+                  </div>
+                )}
+                
+                {ocrStatus && (
+                  <div className="absolute bottom-6 left-6 right-6 bg-slate-900/80 backdrop-blur text-emerald-400 p-3 rounded-xl text-xs font-mono font-bold flex items-center whitespace-pre-wrap shadow-lg border border-slate-700/50 z-10">
+                    {isScanning && <RefreshCw className="w-4 h-4 mr-2 animate-spin text-emerald-500" />}
+                    {ocrStatus}
+                  </div>
+                )}
               </div>
+              
+              <div className="flex space-x-3">
+                <button
+                  type="button"
+                  onClick={captureAndScan}
+                  disabled={isScanning}
+                  className="flex-1 bg-emerald-600 text-white py-4 rounded-2xl font-black flex items-center justify-center space-x-2 hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-500/20 disabled:opacity-50"
+                >
+                  {isScanning ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Camera className="w-5 h-5" />}
+                  <span>{isScanning ? 'Membaca Plat...' : 'Ambil Snapshot & AI Scan'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowLiveFeed(!showLiveFeed)}
+                  className={`px-6 py-4 rounded-2xl font-black flex items-center justify-center transition-all shadow-md ${
+                    showLiveFeed ? 'bg-red-50 text-red-600 border-2 border-red-100' : 'bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200'
+                  }`}
+                >
+                  <div className={`w-3 h-3 rounded-full mr-2 ${showLiveFeed ? 'bg-red-600 animate-pulse' : 'bg-slate-400'}`}></div>
+                  {showLiveFeed ? 'STOP' : 'LIVE'}
+                </button>
+              </div>
+            </div>
 
-              <div className="space-y-2">
+            {/* Form Pendaftaran Truk Masuk */}
+            <form onSubmit={handleOpenSubmit} className="space-y-6 flex flex-col justify-between">
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-500 uppercase flex items-center">
+                    <Truck className="w-3 h-3 mr-1" />
+                    Plat Nomor Truk (Nopol)
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Contoh: L 1234 AB"
+                    value={openForm.nopol}
+                    onChange={e => setOpenForm({...openForm, nopol: e.target.value.toUpperCase()})}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-xl tracking-wider focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-mono font-black text-slate-800 shadow-inner"
+                  />
+                </div>
+
+                <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-500 uppercase flex items-center">
                   <User className="w-3 h-3 mr-1" />
                   Nama Supplier
@@ -177,12 +316,13 @@ export const WeighbridgePanel: React.FC<WeighbridgePanelProps> = ({
 
             <button
               type="submit"
-              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 rounded-xl transition-all shadow-lg shadow-emerald-500/20"
+              className="w-full bg-slate-900 hover:bg-slate-800 text-white font-black py-4 rounded-xl transition-all shadow-xl tracking-widest mt-auto"
             >
               BUKA TIKET TIMBANGAN
             </button>
           </form>
-        ) : (
+        </div>
+      ) : (
           <form onSubmit={handleCloseSubmit} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2 col-span-1 md:col-span-2">
