@@ -39,6 +39,12 @@ export const WeighbridgePanel: React.FC<WeighbridgePanelProps> = ({
   const [showLiveFeed, setShowLiveFeed] = useState(false);
   const [lastSnapshot, setLastSnapshot] = useState<string | null>(null);
   const [ocrStatus, setOcrStatus] = useState('');
+  const [diagnosticLogs, setDiagnosticLogs] = useState<string[]>([]);
+  
+  const addLog = (msg: string) => {
+    const time = new Date().toLocaleTimeString();
+    setDiagnosticLogs(prev => [`[${time}] ${msg}`, ...prev].slice(0, 10));
+  };
   
   const webcamRef = useRef<Webcam>(null);
   
@@ -80,15 +86,19 @@ export const WeighbridgePanel: React.FC<WeighbridgePanelProps> = ({
   const captureAndScan = useCallback(async () => {
     setIsScanning(true);
     setOcrStatus('Mengambil Gambar...');
+    addLog('Mulai capture snapshot...');
 
     let imageToScan: string | null = null;
 
     if (cameraType === 'local') {
+      addLog('Mengambil dari Webcam Lokal...');
       const imageSrc = webcamRef.current?.getScreenshot();
       if (imageSrc) {
         imageToScan = imageSrc;
         setLastSnapshot(imageSrc);
+        addLog('Webcam snapshot berhasil.');
       } else {
+        addLog('Error: Gagal mengambil gambar dari webcam.');
         setOcrStatus('Gagal mengambil gambar dari webcam.');
         setIsScanning(false);
         return;
@@ -96,14 +106,23 @@ export const WeighbridgePanel: React.FC<WeighbridgePanelProps> = ({
     } else {
       // IP Camera Logic
       const snapshotUrl = `http://${cameraSettings.ip}/cgi-bin/snapshot.cgi`;
+      addLog(`Fetching IP: ${snapshotUrl}`);
+      
       try {
         const response = await fetch(snapshotUrl);
-        if (!response.ok) throw new Error('Camera response not OK');
+        addLog(`Fetch response status: ${response.status} ${response.statusText}`);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP Error ${response.status}`);
+        }
+        
         const blob = await response.blob();
         imageToScan = URL.createObjectURL(blob);
         setLastSnapshot(imageToScan);
-      } catch (err) {
+        addLog('IP Camera snapshot berhasil.');
+      } catch (err: any) {
         console.error(err);
+        addLog(`Error Fetch: ${err.message}`);
         setOcrStatus('Gagal terhubung ke Kamera IP.');
         setIsScanning(false);
         return;
@@ -112,14 +131,17 @@ export const WeighbridgePanel: React.FC<WeighbridgePanelProps> = ({
 
     if (imageToScan) {
       try {
+        addLog('Mulai AI OCR Tesseract...');
         setOcrStatus('Mengenali Plat Nomor (AI)...');
         const { data: { text } } = await Tesseract.recognize(imageToScan, 'eng');
+        addLog(`OCR Raw Output: ${text.replace(/\n/g, ' ')}`);
 
         const cleanPlate = text.toUpperCase().replace(/[^A-Z0-9\s]/g, '').trim();
         const match = cleanPlate.match(/[A-Z]{1,2}\s?\d{1,4}\s?[A-Z]{1,3}/);
 
         if (match) {
           const plateNumber = match[0];
+          addLog(`Plat Terdeteksi: ${plateNumber}`);
           if (activeSubTab === 'open') {
             setOpenForm(prev => ({ ...prev, nopol: plateNumber }));
             setOcrStatus(`Berhasil! Plat: ${plateNumber}`);
@@ -132,13 +154,16 @@ export const WeighbridgePanel: React.FC<WeighbridgePanelProps> = ({
               setCloseForm(prev => ({ ...prev, ticketId: found.id }));
               setOcrStatus(`Berhasil! Tiket: ${plateNumber}`);
             } else {
+              addLog(`Warning: Plat ${plateNumber} tidak ada di tiket OPEN.`);
               setOcrStatus(`Plat ${plateNumber} tidak ada di tiket.`);
             }
           }
         } else {
+          addLog('Info: Plat tidak terbaca jelas oleh AI.');
           setOcrStatus('Plat tidak terbaca jelas.');
         }
-      } catch (err) {
+      } catch (err: any) {
+        addLog(`Error AI: ${err.message}`);
         setOcrStatus('Gagal proses AI.');
       }
     }
@@ -203,6 +228,32 @@ export const WeighbridgePanel: React.FC<WeighbridgePanelProps> = ({
              <input type="password" value={cameraSettings.pass} onChange={e => setCameraSettings({...cameraSettings, pass: e.target.value})} className="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 focus:border-emerald-500 font-mono" />
           </div>
           <button onClick={() => setCameraSettings({...cameraSettings, showSettings: false})} className="bg-emerald-600 hover:bg-emerald-700 font-bold px-6 py-3 rounded-xl">Tutup</button>
+        </div>
+      )}
+
+      {cameraSettings.showSettings && (
+        <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 animate-in fade-in slide-in-from-top-4 mt-2">
+          <div className="flex justify-between items-center mb-4">
+            <h4 className="text-white font-black text-xs uppercase tracking-widest flex items-center">
+              <RefreshCw className="w-4 h-4 mr-2 text-emerald-500" />
+              Diagnostic Logs (Troubleshooting)
+            </h4>
+            <button onClick={() => setDiagnosticLogs([])} className="text-[10px] text-slate-500 hover:text-white font-bold">CLEAR LOGS</button>
+          </div>
+          <div className="bg-black/50 p-4 rounded-2xl font-mono text-[10px] space-y-1 h-32 overflow-y-auto border border-white/5 shadow-inner">
+            {diagnosticLogs.length === 0 ? (
+              <div className="text-slate-600 italic">Antri log aktivitas...</div>
+            ) : (
+              diagnosticLogs.map((log, i) => (
+                <div key={i} className={log.includes('Error') ? 'text-red-400' : log.includes('Berhasil') ? 'text-emerald-400' : 'text-slate-300'}>
+                  {log}
+                </div>
+              ))
+            )}
+          </div>
+          <div className="mt-4 text-[10px] text-slate-500 font-medium bg-slate-800/50 p-3 rounded-xl border border-white/5">
+            <p>💡 <span className="text-slate-300">TIPS:</span> Jika Live Feed Muncul tapi Snapshot Gagal, pastikan Windows App memiliki izin jaringan.</p>
+          </div>
         </div>
       )}
 
