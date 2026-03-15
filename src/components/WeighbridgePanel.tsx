@@ -104,26 +104,27 @@ export const WeighbridgePanel: React.FC<WeighbridgePanelProps> = ({
         return;
       }
     } else {
-      // IP Camera Logic
-      const snapshotUrl = `http://${cameraSettings.ip}/cgi-bin/snapshot.cgi`;
-      addLog(`Fetching IP: ${snapshotUrl}`);
+      // IP Camera Logic Proxied via Electron Main (Bypasses CORS/Auth issues)
+      addLog(`Minta snapshot IP via Electron: ${cameraSettings.ip}`);
       
       try {
-        const response = await fetch(snapshotUrl);
-        addLog(`Fetch response status: ${response.status} ${response.statusText}`);
-        
-        if (!response.ok) {
-          throw new Error(`HTTP Error ${response.status}`);
+        if (!(window as any).electron?.invoke) {
+          throw new Error('Electron API IPC invoke tidak tersedia di contextBridge.');
         }
+
+        const base64Image = await (window as any).electron.invoke('get-snapshot', cameraSettings.ip);
         
-        const blob = await response.blob();
-        imageToScan = URL.createObjectURL(blob);
+        if (!base64Image) {
+           throw new Error('Gagal mendownload gambar dari backend.');
+        }
+
+        imageToScan = base64Image;
         setLastSnapshot(imageToScan);
-        addLog('IP Camera snapshot berhasil.');
+        addLog('IP Camera snapshot via Electron berhasil.');
       } catch (err: any) {
         console.error(err);
-        addLog(`Error Fetch: ${err.message}`);
-        setOcrStatus('Gagal terhubung ke Kamera IP.');
+        addLog(`Error IP Dahua: ${err.message}`);
+        setOcrStatus('Gagal terhubung ke Kamera IP Dahua via backend.');
         setIsScanning(false);
         return;
       }

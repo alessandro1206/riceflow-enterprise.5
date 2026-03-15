@@ -21,28 +21,24 @@ export const TradingPanel = ({ state, onAddSchedule, onDeleteSchedule }: any) =>
   const [currentOrder, setCurrentOrder] = useState<any>(null);
   
   const [newSchedule, setNewSchedule] = useState({
-    nopol: '',
     driver: '',
     destination: '',
-    vessel: '',
     tons: 0,
-    material: 'Beras Premium',
+    material: '',
   });
 
   const schedules = state.schedules || [];
   const selectedSchedules = schedules.filter((s: any) => s.date === selectedDate);
 
   const handleCreateSchedule = () => {
-    if (!newSchedule.nopol || !newSchedule.driver) return alert("Nopol dan Driver harus diisi!");
+    if (!newSchedule.driver || !newSchedule.material) return alert("Customer Name dan Material harus diisi!");
     onAddSchedule({ ...newSchedule, date: selectedDate });
     setShowAddForm(false);
     setNewSchedule({
-      nopol: '',
       driver: '',
       destination: '',
-      vessel: '',
       tons: 0,
-      material: 'Beras Premium',
+      material: '',
     });
   };
 
@@ -54,7 +50,7 @@ export const TradingPanel = ({ state, onAddSchedule, onDeleteSchedule }: any) =>
             <Calendar className="mr-3 text-emerald-600" /> LOGISTIK & TRADING
           </h2>
           <p className="text-slate-500">
-            Jadwal Kapal & Manajemen Surat Jalan Antar Pulau
+            Jadwal Pengiriman & Manajemen Surat Jalan Antar Pulau
           </p>
         </div>
         <button 
@@ -145,17 +141,15 @@ export const TradingPanel = ({ state, onAddSchedule, onDeleteSchedule }: any) =>
                   <h4 className="font-black text-slate-800 text-xs uppercase tracking-widest mb-6">Tambah Jadwal Pengiriman</h4>
                   <div className="grid grid-cols-2 gap-6 mb-6">
                     <div>
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2 block">Material & QTY (Ton)</label>
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2 block">Jenis Barang & QTY (Ton)</label>
                       <div className="flex space-x-2">
-                        <select 
+                        <input 
+                          type="text"
                           className="flex-1 p-4 glass-input font-bold text-sm"
+                          placeholder="Contoh: Beras Premium"
                           value={newSchedule.material}
                           onChange={e => setNewSchedule({...newSchedule, material: e.target.value})}
-                        >
-                          <option value="Beras Premium">Beras Premium</option>
-                          <option value="Beras Medium">Beras Medium</option>
-                          <option value="Sekam">Sekam</option>
-                        </select>
+                        />
                         <input 
                           type="number"
                           className="w-24 p-4 glass-input font-black text-center"
@@ -166,7 +160,7 @@ export const TradingPanel = ({ state, onAddSchedule, onDeleteSchedule }: any) =>
                       </div>
                     </div>
                     <div>
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2 block">Tujuan & Kapal</label>
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2 block">Tujuan</label>
                       <div className="flex space-x-2">
                         <input 
                           className="flex-1 p-4 glass-input font-bold"
@@ -174,30 +168,15 @@ export const TradingPanel = ({ state, onAddSchedule, onDeleteSchedule }: any) =>
                           value={newSchedule.destination}
                           onChange={e => setNewSchedule({...newSchedule, destination: e.target.value})}
                         />
-                         <input 
-                          className="flex-1 p-4 glass-input font-bold"
-                          placeholder="Kapal"
-                          value={newSchedule.vessel}
-                          onChange={e => setNewSchedule({...newSchedule, vessel: e.target.value})}
-                        />
                       </div>
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-6">
                     <div>
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2 block">Nomor Polisi</label>
-                      <input 
-                        className="w-full p-4 glass-input font-black uppercase"
-                        placeholder="L 1234 AB"
-                        value={newSchedule.nopol}
-                        onChange={e => setNewSchedule({...newSchedule, nopol: e.target.value.toUpperCase()})}
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2 block">Nama Sopir</label>
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2 block">Customer Name</label>
                       <input 
                         className="w-full p-4 glass-input font-bold"
-                        placeholder="Input Nama"
+                        placeholder="Input Nama Customer"
                         value={newSchedule.driver}
                         onChange={e => setNewSchedule({...newSchedule, driver: e.target.value})}
                       />
@@ -221,7 +200,7 @@ export const TradingPanel = ({ state, onAddSchedule, onDeleteSchedule }: any) =>
                           <Ship className="w-6 h-6 text-emerald-600" />
                         </div>
                         <div>
-                          <p className="font-black text-slate-800 text-lg uppercase leading-none">{s.vessel || 'TANPA KAPAL'}</p>
+                          <p className="font-black text-slate-800 text-lg uppercase leading-none">{s.driver || 'TANPA CUSTOMER'}</p>
                           <div className="flex items-center text-slate-400 text-xs font-bold mt-2">
                             <MapPin className="w-3 h-3 mr-1" /> {s.destination || 'Belum diatur'}
                           </div>
@@ -246,18 +225,14 @@ export const TradingPanel = ({ state, onAddSchedule, onDeleteSchedule }: any) =>
                       </div>
                     </div>
                     
-                    <div className="grid grid-cols-3 gap-6 mt-6 pt-6 border-t border-white/40">
+                    <div className="grid grid-cols-2 gap-6 mt-6 pt-6 border-t border-white/40">
                       <div>
                         <p className="text-[10px] font-black text-slate-400 uppercase">Item & Kuantitas</p>
                         <p className="font-black text-sm text-emerald-700">{s.material} - {s.tons} TON</p>
                       </div>
                       <div>
-                        <p className="text-[10px] font-black text-slate-400 uppercase">Driver</p>
+                        <p className="text-[10px] font-black text-slate-400 uppercase">Customer Name</p>
                         <p className="font-bold text-sm text-slate-600">{s.driver}</p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] font-black text-slate-400 uppercase">Nopol</p>
-                        <p className="font-bold text-sm text-slate-600">{s.nopol}</p>
                       </div>
                     </div>
                   </div>
@@ -323,22 +298,18 @@ export const TradingPanel = ({ state, onAddSchedule, onDeleteSchedule }: any) =>
             <div className="grid grid-cols-2 gap-16 mb-16">
               <div className="space-y-6">
                 <div className="flex justify-between border-b border-slate-100 pb-3">
-                  <span className="text-[10px] font-black text-slate-400 uppercase">NOMOR POLISI</span>
-                  <span className="text-lg font-black text-slate-800">{currentOrder.nopol}</span>
-                </div>
-                <div className="flex justify-between border-b border-slate-100 pb-3">
-                  <span className="text-[10px] font-black text-slate-400 uppercase">NAMA SOPIR</span>
-                  <span className="text-lg font-black text-slate-800">{currentOrder.driver}</span>
+                   <span className="text-[10px] font-black text-slate-400 uppercase">TANGGAL PENGIRIMAN</span>
+                   <span className="text-lg font-black text-slate-800">{currentOrder.date} Mar 2026</span>
                 </div>
               </div>
               <div className="space-y-6">
                 <div className="flex justify-between border-b border-slate-100 pb-3">
-                  <span className="text-[10px] font-black text-slate-400 uppercase">TANGGAL</span>
-                  <span className="text-lg font-black text-slate-800">{currentOrder.date} Mar 2026</span>
-                </div>
-                <div className="flex justify-between border-b border-slate-100 pb-3">
                   <span className="text-[10px] font-black text-slate-400 uppercase">TUJUAN</span>
                   <span className="text-lg font-black text-slate-800">{currentOrder.destination}</span>
+                </div>
+                <div className="flex justify-between border-b border-slate-100 pb-3">
+                  <span className="text-[10px] font-black text-slate-400 uppercase">CUSTOMER NAME</span>
+                  <span className="text-lg font-black text-slate-800">{currentOrder.driver}</span>
                 </div>
               </div>
             </div>
@@ -348,14 +319,12 @@ export const TradingPanel = ({ state, onAddSchedule, onDeleteSchedule }: any) =>
                 <tr className="bg-slate-900 text-white">
                   <th className="p-5 text-left text-[10px] font-black uppercase tracking-widest">NAMA BARANG</th>
                   <th className="p-5 text-right text-[10px] font-black uppercase tracking-widest">QTY (TON)</th>
-                  <th className="p-5 text-right text-[10px] font-black uppercase tracking-widest">PENGIRIMAN</th>
                 </tr>
               </thead>
               <tbody>
                 <tr className="border-b-2 border-slate-100">
                   <td className="p-6 font-black text-xl text-slate-800">{currentOrder.material}</td>
                   <td className="p-6 text-right font-black text-2xl text-emerald-600">{currentOrder.tons}</td>
-                  <td className="p-6 text-right font-bold text-sm italic text-slate-400">{currentOrder.vessel}</td>
                 </tr>
               </tbody>
             </table>
@@ -363,7 +332,7 @@ export const TradingPanel = ({ state, onAddSchedule, onDeleteSchedule }: any) =>
             <div className="grid grid-cols-3 gap-12 text-center mt-32">
               <div>
                 <div className="h-24 border-b border-slate-200 mb-4 mx-8"></div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Sopir / Pembawa</p>
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Customer</p>
               </div>
               <div>
                 <div className="h-24 border-b border-slate-200 mb-4 mx-8"></div>
@@ -401,28 +370,25 @@ export const TradingPanel = ({ state, onAddSchedule, onDeleteSchedule }: any) =>
             {/* ... simplified for print ... */}
             <div className="grid grid-cols-2 gap-16 mb-16">
               <div className="space-y-6">
-                <div className="flex justify-between border-b pb-3"><span className="text-[10px] font-black uppercase">NOPOL</span><span className="text-lg font-black">{currentOrder.nopol}</span></div>
-                <div className="flex justify-between border-b pb-3"><span className="text-[10px] font-black uppercase">SOPIR</span><span className="text-lg font-black">{currentOrder.driver}</span></div>
+                <div className="flex justify-between border-b pb-3"><span className="text-[10px] font-black uppercase">TANGGAL PENGIRIMAN</span><span className="text-lg font-black">{currentOrder.date} Mar 2026</span></div>
               </div>
               <div className="space-y-6">
-                <div className="flex justify-between border-b pb-3"><span className="text-[10px] font-black uppercase">TANGGAL</span><span className="text-lg font-black">{currentOrder.date} Mar 2026</span></div>
                 <div className="flex justify-between border-b pb-3"><span className="text-[10px] font-black uppercase">TUJUAN</span><span className="text-lg font-black">{currentOrder.destination}</span></div>
+                <div className="flex justify-between border-b pb-3"><span className="text-[10px] font-black uppercase">CUSTOMER NAME</span><span className="text-lg font-black">{currentOrder.driver}</span></div>
               </div>
             </div>
             <table className="w-full mb-20">
               <tr className="bg-slate-900 text-white">
                 <th className="p-5 text-left text-[10px] font-black uppercase">NAMA BARANG</th>
                 <th className="p-5 text-right text-[10px] font-black uppercase">QTY (TON)</th>
-                <th className="p-5 text-right text-[10px] font-black uppercase">KETERANGAN</th>
               </tr>
               <tr className="border-b-2">
                 <td className="p-6 font-black text-xl">{currentOrder.material}</td>
                 <td className="p-6 text-right font-black text-2xl">{currentOrder.tons}</td>
-                <td className="p-6 text-right font-bold text-sm italic">{currentOrder.vessel}</td>
               </tr>
             </table>
             <div className="grid grid-cols-3 gap-12 text-center mt-32">
-              <div><div className="h-24 border-b border-slate-200 mb-4 mx-8"></div><p className="text-[10px] font-black uppercase">Sopir</p></div>
+              <div><div className="h-24 border-b border-slate-200 mb-4 mx-8"></div><p className="text-[10px] font-black uppercase">Customer</p></div>
               <div><div className="h-24 border-b border-slate-200 mb-4 mx-8"></div><p className="text-[10px] font-black uppercase">Penerima</p></div>
               <div><div className="h-24 border-b border-slate-200 mb-4 mx-8 font-black flex items-center justify-center relative"><span className="font-['Dancing_Script'] text-2xl text-emerald-800/80 -rotate-3">H. Moch. Amich</span></div><p className="text-[10px] font-black uppercase text-emerald-600">PP BUMI MAS (Approved)</p></div>
             </div>
