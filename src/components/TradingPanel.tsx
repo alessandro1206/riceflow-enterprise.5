@@ -23,22 +23,20 @@ export const TradingPanel = ({ state, onAddSchedule, onDeleteSchedule }: any) =>
   const [newSchedule, setNewSchedule] = useState({
     driver: '',
     destination: '',
-    tons: 0,
-    material: '',
+    items: [{ material: '', tons: 0 }],
   });
 
   const schedules = state.schedules || [];
   const selectedSchedules = schedules.filter((s: any) => s.date === selectedDate);
 
   const handleCreateSchedule = () => {
-    if (!newSchedule.driver || !newSchedule.material) return alert("Customer Name dan Material harus diisi!");
+    if (!newSchedule.driver || newSchedule.items.some(i => !i.material)) return alert("Customer Name dan semua Material harus diisi!");
     onAddSchedule({ ...newSchedule, date: selectedDate });
     setShowAddForm(false);
     setNewSchedule({
       driver: '',
       destination: '',
-      tons: 0,
-      material: '',
+      items: [{ material: '', tons: 0 }],
     });
   };
 
@@ -98,11 +96,14 @@ export const TradingPanel = ({ state, onAddSchedule, onDeleteSchedule }: any) =>
                   {hasSchedule && (
                     <div className="mt-1 w-full space-y-1">
                       {isExpanded ? (
-                        daySchedules.slice(0, 2).map((s: any, idx: number) => (
-                           <div key={idx} className={`text-[8px] truncate px-1 rounded ${selectedDate === day ? 'bg-emerald-500 text-white' : 'bg-emerald-100 text-emerald-700'}`}>
-                             {s.material.split(' ')[0]} {s.tons}T
-                           </div>
-                        ))
+                        daySchedules.slice(0, 2).map((s: any, idx: number) => {
+                           const firstItem = s.items ? s.items[0] : s;
+                           return (
+                             <div key={idx} className={`text-[8px] truncate px-1 rounded ${selectedDate === day ? 'bg-emerald-500 text-white' : 'bg-emerald-100 text-emerald-700'}`}>
+                               {firstItem.material?.split(' ')[0]} {firstItem.tons}T
+                             </div>
+                           );
+                        })
                       ) : (
                         <div className={`w-full h-1 rounded-full ${selectedDate === day ? 'bg-amber-400' : 'bg-emerald-500'}`}></div>
                       )}
@@ -139,26 +140,57 @@ export const TradingPanel = ({ state, onAddSchedule, onDeleteSchedule }: any) =>
               {showAddForm && (
                 <div className="mb-8 p-8 bg-slate-50 rounded-[32px] border border-slate-200 animate-in slide-in-from-top-4">
                   <h4 className="font-black text-slate-800 text-xs uppercase tracking-widest mb-6">Tambah Jadwal Pengiriman</h4>
-                  <div className="grid grid-cols-2 gap-6 mb-6">
+                  <div className="space-y-4 mb-6">
                     <div>
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2 block">Jenis Barang & QTY (Ton)</label>
-                      <div className="flex space-x-2">
-                        <input 
-                          type="text"
-                          className="flex-1 p-4 glass-input font-bold text-sm"
-                          placeholder="Contoh: Beras Premium"
-                          value={newSchedule.material}
-                          onChange={e => setNewSchedule({...newSchedule, material: e.target.value})}
-                        />
-                        <input 
-                          type="number"
-                          className="w-24 p-4 glass-input font-black text-center"
-                          placeholder="TON"
-                          value={newSchedule.tons || ''}
-                          onChange={e => setNewSchedule({...newSchedule, tons: Number(e.target.value)})}
-                        />
-                      </div>
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2 block">Daftar Pesanan</label>
+                      {newSchedule.items.map((item, idx) => (
+                        <div key={idx} className="flex space-x-2 mb-2">
+                          <input 
+                            type="text"
+                            className="flex-1 p-4 glass-input font-bold text-sm"
+                            placeholder="Contoh: Beras Premium"
+                            value={item.material}
+                            onChange={e => {
+                               const newItems = [...newSchedule.items];
+                               newItems[idx].material = e.target.value;
+                               setNewSchedule({...newSchedule, items: newItems});
+                            }}
+                          />
+                          <input 
+                            type="number"
+                            className="w-24 p-4 glass-input font-black text-center"
+                            placeholder="TON"
+                            value={item.tons || ''}
+                            onChange={e => {
+                               const newItems = [...newSchedule.items];
+                               newItems[idx].tons = Number(e.target.value);
+                               setNewSchedule({...newSchedule, items: newItems});
+                            }}
+                          />
+                          {idx > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const newItems = newSchedule.items.filter((_, i) => i !== idx);
+                                setNewSchedule({...newSchedule, items: newItems});
+                              }}
+                              className="p-4 bg-red-50 text-red-500 rounded-2xl hover:bg-red-100 transition-colors shadow-sm"
+                            >
+                              <Trash2 className="w-5 h-5" />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => setNewSchedule({...newSchedule, items: [...newSchedule.items, { material: '', tons: 0 }]})}
+                        className="text-xs font-bold text-emerald-600 flex items-center mt-3 hover:text-emerald-700 bg-emerald-50 px-4 py-2 rounded-xl transition-colors w-fit"
+                      >
+                        <Plus className="w-4 h-4 mr-1" /> Tambah Pesanan Lain
+                      </button>
                     </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-6 mb-6">
                     <div>
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2 block">Tujuan</label>
                       <div className="flex space-x-2">
@@ -228,7 +260,13 @@ export const TradingPanel = ({ state, onAddSchedule, onDeleteSchedule }: any) =>
                     <div className="grid grid-cols-2 gap-6 mt-6 pt-6 border-t border-white/40">
                       <div>
                         <p className="text-[10px] font-black text-slate-400 uppercase">Item & Kuantitas</p>
-                        <p className="font-black text-sm text-emerald-700">{s.material} - {s.tons} TON</p>
+                        {s.items ? (
+                          s.items.map((item: any, i: number) => (
+                            <p key={i} className="font-black text-sm text-emerald-700">{item.material} - {item.tons} TON</p>
+                          ))
+                        ) : (
+                          <p className="font-black text-sm text-emerald-700">{s.material} - {s.tons} TON</p>
+                        )}
                       </div>
                       <div>
                         <p className="text-[10px] font-black text-slate-400 uppercase">Customer Name</p>
@@ -322,10 +360,17 @@ export const TradingPanel = ({ state, onAddSchedule, onDeleteSchedule }: any) =>
                 </tr>
               </thead>
               <tbody>
-                <tr className="border-b-2 border-slate-100">
-                  <td className="p-6 font-black text-xl text-slate-800">{currentOrder.material}</td>
-                  <td className="p-6 text-right font-black text-2xl text-emerald-600">{currentOrder.tons}</td>
-                </tr>
+                {currentOrder.items ? currentOrder.items.map((item: any, idx: number) => (
+                  <tr key={idx} className="border-b-2 border-slate-100">
+                    <td className="p-6 font-black text-xl text-slate-800">{item.material}</td>
+                    <td className="p-6 text-right font-black text-2xl text-emerald-600">{item.tons}</td>
+                  </tr>
+                )) : (
+                  <tr className="border-b-2 border-slate-100">
+                    <td className="p-6 font-black text-xl text-slate-800">{currentOrder.material}</td>
+                    <td className="p-6 text-right font-black text-2xl text-emerald-600">{currentOrder.tons}</td>
+                  </tr>
+                )}
               </tbody>
             </table>
 
@@ -382,10 +427,17 @@ export const TradingPanel = ({ state, onAddSchedule, onDeleteSchedule }: any) =>
                 <th className="p-5 text-left text-[10px] font-black uppercase">NAMA BARANG</th>
                 <th className="p-5 text-right text-[10px] font-black uppercase">QTY (TON)</th>
               </tr>
-              <tr className="border-b-2">
-                <td className="p-6 font-black text-xl">{currentOrder.material}</td>
-                <td className="p-6 text-right font-black text-2xl">{currentOrder.tons}</td>
-              </tr>
+              {currentOrder.items ? currentOrder.items.map((item: any, idx: number) => (
+                <tr key={idx} className="border-b-2">
+                  <td className="p-6 font-black text-xl">{item.material}</td>
+                  <td className="p-6 text-right font-black text-2xl">{item.tons}</td>
+                </tr>
+              )) : (
+                <tr className="border-b-2">
+                  <td className="p-6 font-black text-xl">{currentOrder.material}</td>
+                  <td className="p-6 text-right font-black text-2xl">{currentOrder.tons}</td>
+                </tr>
+              )}
             </table>
             <div className="grid grid-cols-3 gap-12 text-center mt-32">
               <div><div className="h-24 border-b border-slate-200 mb-4 mx-8"></div><p className="text-[10px] font-black uppercase">Customer</p></div>

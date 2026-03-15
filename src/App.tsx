@@ -86,6 +86,20 @@ export default function App() {
 
   // --- THE CLOUD CONNECTION ---
   useEffect(() => {
+    // Fetch users (available even if not logged in for the login screen)
+    const fetchUsers = async () => {
+      try {
+        const response = await fetch('https://sabrent.pythonanywhere.com/api/auth/users');
+        if (response.ok) {
+          const cloudUsers = await response.json();
+          setState((prev: any) => ({ ...prev, userList: cloudUsers }));
+        }
+      } catch (error) {
+        console.error('Failed to fetch user list from cloud:', error);
+      }
+    };
+    fetchUsers();
+
     if (!isLoggedIn) return;
     const fetchCloudData = async () => {
       try {
@@ -131,18 +145,44 @@ export default function App() {
     localStorage.removeItem('riceflow_user');
   };
 
-  const onAddUser = (userData: any) => {
-    setState((prev: any) => ({
-      ...prev,
-      userList: [...prev.userList, userData]
-    }));
+  const onAddUser = async (userData: any) => {
+    try {
+      const response = await fetch('https://sabrent.pythonanywhere.com/api/auth/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(userData),
+      });
+      if (response.ok) {
+        setState((prev: any) => ({
+          ...prev,
+          userList: [...prev.userList, userData]
+        }));
+      } else {
+        alert('Gagal menyimpan user ke cloud.');
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Error koneksi saat menambah user.');
+    }
   };
 
-  const onRemoveUser = (username: string) => {
-    setState((prev: any) => ({
-      ...prev,
-      userList: prev.userList.filter((u: any) => u.username !== username)
-    }));
+  const onRemoveUser = async (username: string) => {
+    try {
+      const response = await fetch(`https://sabrent.pythonanywhere.com/api/auth/users/${username}`, {
+        method: 'DELETE',
+      });
+      if (response.ok) {
+        setState((prev: any) => ({
+          ...prev,
+          userList: prev.userList.filter((u: any) => u.username !== username)
+        }));
+      } else {
+        alert('Gagal menghapus user dari cloud.');
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Error koneksi saat menghapus user.');
+    }
   };
 
   // --- ACCOUNTING AUTOMATION ENGINE ---
@@ -390,7 +430,7 @@ export default function App() {
   };
 
   if (!isLoggedIn) {
-    return <Login onLogin={handleLogin} userList={state.userList} />;
+    return <Login onLogin={handleLogin} />;
   }
 
   return (

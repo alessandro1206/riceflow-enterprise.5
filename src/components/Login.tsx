@@ -3,30 +3,39 @@ import { Lock, User, Wheat, ArrowRight, ShieldCheck } from 'lucide-react';
 
 interface LoginProps {
   onLogin: (userData: { name: string; role: string }) => void;
-  userList: any[];
 }
 
-export const Login: React.FC<LoginProps> = ({ onLogin, userList }) => {
+export const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
 
-    // Simulated login logic
-    setTimeout(() => {
-      const user = userList.find(u => u.username === username && u.password === password);
-      if (user) {
-        onLogin({ name: user.name, role: user.role });
+    try {
+      const response = await fetch('https://sabrent.pythonanywhere.com/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+      });
+
+      if (response.ok) {
+        const userData = await response.json();
+        onLogin(userData);
       } else {
-        setError('Invalid credentials. Please try again.');
+        const errData = await response.json().catch(() => ({}));
+        setError(errData.message || 'Invalid credentials. Please try again.');
         setLoading(false);
       }
-    }, 1500);
+    } catch (err) {
+      console.error('Login error:', err);
+      setError('Connection refused. Please check your internet.');
+      setLoading(false);
+    }
   };
 
   return (
