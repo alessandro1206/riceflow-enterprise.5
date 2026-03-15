@@ -33,8 +33,25 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
       }
     } catch (err) {
       console.error('Login error:', err);
-      setError('Connection refused. Please check your internet.');
+      setError('Koneksi Gagal (Server Cloud Belum Siap).');
       setLoading(false);
+    }
+  };
+
+  const handleLocalLogin = () => {
+    // Fallback logic for when the cloud backend is not reachable
+    // We try to find the user in the hardcoded list as a backup.
+    const fallbackUsers = [
+      { username: 'admin', password: 'admin123', name: 'Admin', role: 'Admin' },
+      { username: 'erfi', password: 'operator123', name: 'Erfi', role: 'Operator' },
+      { username: 'emak', password: 'finance123', name: 'Emak', role: 'Finance' }
+    ];
+    
+    const user = fallbackUsers.find(u => u.username === username && u.password === password);
+    if (user) {
+      onLogin({ name: user.name, role: user.role });
+    } else {
+      setError('Invalid local credentials.');
     }
   };
 
@@ -82,9 +99,20 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
             </div>
 
             {error && (
-              <div className="bg-red-500/20 border border-red-500/50 p-4 rounded-xl flex items-center text-red-100 text-xs font-bold animate-in fade-in slide-in-from-top-2">
-                <ShieldCheck className="w-4 h-4 mr-2" />
-                {error}
+              <div className="flex flex-col gap-2">
+                <div className="bg-red-500/20 border border-red-500/50 p-4 rounded-xl flex items-center text-red-100 text-xs font-bold animate-in fade-in slide-in-from-top-2">
+                    <ShieldCheck className="w-4 h-4 mr-2" />
+                    {error}
+                </div>
+                {error.includes('Koneksi Gagal') && (
+                    <button 
+                        type="button" 
+                        onClick={handleLocalLogin}
+                        className="text-[10px] text-amber-400 font-black hover:underline uppercase tracking-widest text-center py-2"
+                    >
+                        Klik disini untuk Masuk via Local (Offline Mode)
+                    </button>
+                )}
               </div>
             )}
 
