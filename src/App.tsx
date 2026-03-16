@@ -53,6 +53,7 @@ const INITIAL_STATE = {
     { code: '61003', name: 'Biaya Perawatan Mesin', type: 'EXPENSE' },
   ],
   journal: [],
+  startingBalances: {} as Record<string, number>, // { accountCode: amount }
   schedules: [], // Deprecated in favor of custom tickets / tickets
   tickets: [], // Master list for Weighbridge and Finance
   userList: [
@@ -186,16 +187,30 @@ export default function App() {
   };
 
   // --- ACCOUNTING AUTOMATION ENGINE ---
-  const addJournalEntry = (desc: string, lines: any[]) => {
+  const addJournalEntry = (desc: string, lines: any[], date?: string) => {
     const newEntry = {
-      id: `JRN-${Date.now()}`,
-      date: new Date().toISOString().split('T')[0],
+      id: `JRN-${Date.now()}-${Math.random().toString(36).substr(2,4)}`,
+      date: date || new Date().toISOString().split('T')[0],
       description: desc,
       lines,
     };
     setState((prev: any) => ({
       ...prev,
       journal: [...prev.journal, newEntry],
+    }));
+  };
+
+  const onImportJournal = (entries: any[]) => {
+    setState((prev: any) => ({
+      ...prev,
+      journal: [...prev.journal, ...entries],
+    }));
+  };
+
+  const onSetStartingBalance = (balances: Record<string, number>) => {
+    setState((prev: any) => ({
+      ...prev,
+      startingBalances: { ...prev.startingBalances, ...balances },
     }));
   };
 
@@ -500,6 +515,8 @@ export default function App() {
           state={state} 
           onYearEndClose={onYearEndClose} 
           onAddExpense={onAddExpense}
+          onImportJournal={onImportJournal}
+          onSetStartingBalance={onSetStartingBalance}
         />
       )}
       {activeTab === 'settings' && (
