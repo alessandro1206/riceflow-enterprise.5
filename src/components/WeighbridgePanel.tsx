@@ -102,6 +102,10 @@ export const WeighbridgePanel: React.FC<WeighbridgePanelProps> = ({
       setShowLiveFeed(false);
       setLiveFeedUrl(null);
     });
+
+    electron.on('diagnostic-log', (msg: string) => {
+      addLog(msg);
+    });
   }, []);
 
   // Use current scale weight for the form
