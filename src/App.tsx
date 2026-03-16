@@ -430,7 +430,7 @@ export default function App() {
   };
 
   if (!isLoggedIn) {
-    return <Login onLogin={handleLogin} />;
+    return <Login onLogin={handleLogin} userList={state.userList} />;
   }
 
   return (

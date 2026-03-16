@@ -3,56 +3,69 @@ import { Lock, User, Wheat, ArrowRight, ShieldCheck } from 'lucide-react';
 
 interface LoginProps {
   onLogin: (userData: { name: string; role: string }) => void;
+  userList?: { username: string; password: string; name: string; role: string }[];
 }
 
-export const Login: React.FC<LoginProps> = ({ onLogin }) => {
+export const Login: React.FC<LoginProps> = ({ onLogin, userList = [] }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Hardcoded fallback users in case userList prop is empty
+  const fallbackUsers = [
+    { username: 'admin', password: 'admin123', name: 'Admin', role: 'Admin' },
+    { username: 'erfi', password: 'operator123', name: 'Erfi', role: 'Operator' },
+    { username: 'emak', password: 'finance123', name: 'Emak', role: 'Finance' }
+  ];
+
+  const localAuth = (uname: string, pass: string): { name: string; role: string } | null => {
+    const allUsers = userList.length > 0 ? userList : fallbackUsers;
+    const user = allUsers.find(u => u.username === uname && u.password === pass);
+    return user ? { name: user.name, role: user.role } : null;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
 
+    // Step 1: Try cloud login
     try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 5000); // 5s timeout
+
       const response = await fetch('https://sabrent.pythonanywhere.com/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password }),
+        signal: controller.signal,
       });
+      clearTimeout(timeout);
 
       if (response.ok) {
         const userData = await response.json();
         onLogin(userData);
-      } else {
-        const errData = await response.json().catch(() => ({}));
-        setError(errData.message || 'Invalid credentials. Please try again.');
-        setLoading(false);
+        return;
       }
-    } catch (err) {
-      console.error('Login error:', err);
-      setError('Koneksi Gagal (Server Cloud Belum Siap).');
-      setLoading(false);
-    }
-  };
 
-  const handleLocalLogin = () => {
-    // Fallback logic for when the cloud backend is not reachable
-    // We try to find the user in the hardcoded list as a backup.
-    const fallbackUsers = [
-      { username: 'admin', password: 'admin123', name: 'Admin', role: 'Admin' },
-      { username: 'erfi', password: 'operator123', name: 'Erfi', role: 'Operator' },
-      { username: 'emak', password: 'finance123', name: 'Emak', role: 'Finance' }
-    ];
-    
-    const user = fallbackUsers.find(u => u.username === username && u.password === password);
-    if (user) {
-      onLogin({ name: user.name, role: user.role });
-    } else {
-      setError('Invalid local credentials.');
+      // Cloud responded but rejected credentials — still try local as fallback
+      // (the cloud might not have the user registered)
+    } catch (err) {
+      // Cloud unreachable — continue to local fallback
+      console.log('Cloud login unavailable, falling back to local auth.');
     }
+
+    // Step 2: Automatic local fallback
+    const localUser = localAuth(username, password);
+    if (localUser) {
+      onLogin(localUser);
+      return;
+    }
+
+    // Both cloud and local failed
+    setError('Username atau password salah. Silakan coba lagi.');
+    setLoading(false);
   };
 
   return (
@@ -99,20 +112,9 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
             </div>
 
             {error && (
-              <div className="flex flex-col gap-2">
-                <div className="bg-red-500/20 border border-red-500/50 p-4 rounded-xl flex items-center text-red-100 text-xs font-bold animate-in fade-in slide-in-from-top-2">
-                    <ShieldCheck className="w-4 h-4 mr-2" />
-                    {error}
-                </div>
-                {error.includes('Koneksi Gagal') && (
-                    <button 
-                        type="button" 
-                        onClick={handleLocalLogin}
-                        className="text-[10px] text-amber-400 font-black hover:underline uppercase tracking-widest text-center py-2"
-                    >
-                        Klik disini untuk Masuk via Local (Offline Mode)
-                    </button>
-                )}
+              <div className="bg-red-500/20 border border-red-500/50 p-4 rounded-xl flex items-center text-red-100 text-xs font-bold animate-in fade-in slide-in-from-top-2">
+                <ShieldCheck className="w-4 h-4 mr-2 flex-shrink-0" />
+                {error}
               </div>
             )}
 
@@ -125,7 +127,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
                 <div className="w-6 h-6 border-4 border-emerald-950/20 border-t-emerald-950 rounded-full animate-spin"></div>
               ) : (
                 <>
-                  AUTHENTICATE
+                  MASUK
                   <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
                 </>
               )}
