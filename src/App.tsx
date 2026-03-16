@@ -146,42 +146,42 @@ export default function App() {
   };
 
   const onAddUser = async (userData: any) => {
+    // Always update local state first for responsiveness and offline support
+    setState((prev: any) => ({
+      ...prev,
+      userList: [...prev.userList, userData]
+    }));
+
     try {
       const response = await fetch('https://sabrent.pythonanywhere.com/api/auth/users', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(userData),
       });
-      if (response.ok) {
-        setState((prev: any) => ({
-          ...prev,
-          userList: [...prev.userList, userData]
-        }));
-      } else {
-        alert('Gagal menyimpan user ke cloud.');
+      if (!response.ok) {
+        console.warn('Gagal sinkron user baru ke cloud (Cloud Offline).');
       }
     } catch (e) {
-      console.error(e);
-      alert('Error koneksi saat menambah user.');
+      console.warn('Error koneksi cloud saat menambah user (Cloud Offline).');
     }
   };
 
   const onRemoveUser = async (username: string) => {
+    // Always update local state first
+    setState((prev: any) => ({
+      ...prev,
+      userList: prev.userList.filter((u: any) => u.username !== username)
+    }));
+
     try {
       const response = await fetch(`https://sabrent.pythonanywhere.com/api/auth/users/${username}`, {
         method: 'DELETE',
       });
-      if (response.ok) {
-        setState((prev: any) => ({
-          ...prev,
-          userList: prev.userList.filter((u: any) => u.username !== username)
-        }));
-      } else {
-        alert('Gagal menghapus user dari cloud.');
+      if (!response.ok) {
+        console.warn('Gagal menghapus user dari cloud (Cloud Offline).');
       }
     } catch (e) {
-      console.error(e);
-      alert('Error koneksi saat menghapus user.');
+      console.warn('Error koneksi cloud saat menghapus user (Cloud Offline).');
     }
   };
 
