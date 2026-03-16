@@ -31,6 +31,7 @@ export const WeighbridgePanel: React.FC<WeighbridgePanelProps> = ({
   const [cameraType, setCameraType] = useState<'ip' | 'local'>('ip');
   const [cameraSettings, setCameraSettings] = useState({
     ip: '192.168.1.190',
+    port: '80',
     user: 'admin',
     pass: 'Admin123',
     showSettings: false
@@ -177,7 +178,7 @@ export const WeighbridgePanel: React.FC<WeighbridgePanelProps> = ({
           throw new Error('Electron API IPC invoke tidak tersedia.');
         }
 
-        const base64Image = await (window as any).electron.invoke('get-snapshot', cameraSettings.ip);
+        const base64Image = await (window as any).electron.invoke('get-snapshot', cameraSettings.ip, cameraSettings.port);
         
         if (!base64Image) {
            throw new Error('Gagal mendownload gambar dari kamera.');
@@ -189,7 +190,7 @@ export const WeighbridgePanel: React.FC<WeighbridgePanelProps> = ({
       } catch (err: any) {
         console.error(err);
         addLog(`Error IP Dahua: ${err.message}`);
-        setOcrStatus('Gagal terhubung ke Kamera IP Dahua.');
+        setOcrStatus(`Gagal Snapshot: ${err.message}`);
         setIsScanning(false);
         return;
       }
@@ -393,6 +394,10 @@ export const WeighbridgePanel: React.FC<WeighbridgePanelProps> = ({
 
       {cameraSettings.showSettings && (
         <div className="bg-slate-800 p-6 rounded-3xl text-white shadow-xl flex gap-4 items-end animate-in fade-in slide-in-from-top-4">
+          <div className="w-40">
+             <label className="text-xs font-black uppercase tracking-widest text-slate-400 mb-2 block">Port (HTTP)</label>
+             <input value={cameraSettings.port} onChange={e => setCameraSettings({...cameraSettings, port: e.target.value})} className="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 focus:border-emerald-500 font-mono text-white" />
+          </div>
           <div className="flex-1">
              <label className="text-xs font-black uppercase tracking-widest text-slate-400 mb-2 block">IP Camera Dahua</label>
              <input value={cameraSettings.ip} onChange={e => setCameraSettings({...cameraSettings, ip: e.target.value})} className="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 focus:border-emerald-500 font-mono" />
