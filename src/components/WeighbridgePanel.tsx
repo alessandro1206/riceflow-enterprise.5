@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { Scale, Truck, CheckCircle2, User, Database, Clock, Camera, RefreshCw, Settings, Monitor } from 'lucide-react';
+import { Scale, Truck, CheckCircle2, User, Database, Clock, Camera, RefreshCw, Settings, Monitor, Wifi, WifiOff, Zap } from 'lucide-react';
 import Tesseract from 'tesseract.js';
 import Webcam from 'react-webcam';
 
@@ -37,9 +37,16 @@ export const WeighbridgePanel: React.FC<WeighbridgePanelProps> = ({
   });
   const [isScanning, setIsScanning] = useState(false);
   const [showLiveFeed, setShowLiveFeed] = useState(false);
+  const [liveFeedUrl, setLiveFeedUrl] = useState<string | null>(null);
   const [lastSnapshot, setLastSnapshot] = useState<string | null>(null);
   const [ocrStatus, setOcrStatus] = useState('');
   const [diagnosticLogs, setDiagnosticLogs] = useState<string[]>([]);
+
+  // Scale State
+  const [liveWeight, setLiveWeight] = useState<number>(0);
+  const [scaleStable, setScaleStable] = useState(false);
+  const [scaleConnected, setScaleConnected] = useState(false);
+  const [scaleUnit, setScaleUnit] = useState('KG');
   
   const addLog = (msg: string) => {
     const time = new Date().toLocaleTimeString();
@@ -57,6 +64,53 @@ export const WeighbridgePanel: React.FC<WeighbridgePanelProps> = ({
       });
     }
   }, [cameraSettings.user, cameraSettings.pass]);
+
+  // Listen for scale data from Electron IPC
+  useEffect(() => {
+    const electron = (window as any).electron;
+    if (!electron?.on) return;
+
+    electron.on('scale-data', (data: any) => {
+      setLiveWeight(data.weight);
+      setScaleStable(data.stable);
+      setScaleUnit(data.unit || 'KG');
+      setScaleConnected(true);
+    });
+
+    electron.on('scale-status', (status: any) => {
+      setScaleConnected(status.connected);
+      if (status.connected) {
+        addLog(`Timbangan CAS 200i terhubung di ${status.port}`);
+      } else {
+        addLog(`Timbangan terputus: ${status.error || 'Disconnected'}`);
+      }
+    });
+
+    electron.on('live-feed-stopped', () => {
+      setShowLiveFeed(false);
+      setLiveFeedUrl(null);
+      addLog('Live feed berhenti.');
+    });
+
+    electron.on('live-feed-error', (msg: string) => {
+      addLog(`Error Live Feed: ${msg}`);
+      setOcrStatus(msg);
+      setShowLiveFeed(false);
+      setLiveFeedUrl(null);
+    });
+  }, []);
+
+  // Use current scale weight for the form
+  const useCurrentWeight = () => {
+    if (liveWeight <= 0) return;
+    if (activeSubTab === 'open') {
+      setOpenForm(prev => ({ ...prev, grossWeight: String(liveWeight) }));
+      addLog(`Berat Kotor diisi dari timbangan: ${liveWeight} KG`);
+    } else {
+      setCloseForm(prev => ({ ...prev, tareWeight: String(liveWeight) }));
+      addLog(`Berat Kosong diisi dari timbangan: ${liveWeight} KG`);
+    }
+  };
 
   const handleOpenSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -104,18 +158,18 @@ export const WeighbridgePanel: React.FC<WeighbridgePanelProps> = ({
         return;
       }
     } else {
-      // IP Camera Logic Proxied via Electron Main (Bypasses CORS/Auth issues)
+      // IP Camera Snapshot via Electron IPC
       addLog(`Minta snapshot IP via Electron: ${cameraSettings.ip}`);
       
       try {
         if (!(window as any).electron?.invoke) {
-          throw new Error('Electron API IPC invoke tidak tersedia di contextBridge.');
+          throw new Error('Electron API IPC invoke tidak tersedia.');
         }
 
         const base64Image = await (window as any).electron.invoke('get-snapshot', cameraSettings.ip);
         
         if (!base64Image) {
-           throw new Error('Gagal mendownload gambar dari backend.');
+           throw new Error('Gagal mendownload gambar dari kamera.');
         }
 
         imageToScan = base64Image;
@@ -124,7 +178,7 @@ export const WeighbridgePanel: React.FC<WeighbridgePanelProps> = ({
       } catch (err: any) {
         console.error(err);
         addLog(`Error IP Dahua: ${err.message}`);
-        setOcrStatus('Gagal terhubung ke Kamera IP Dahua via backend.');
+        setOcrStatus('Gagal terhubung ke Kamera IP Dahua.');
         setIsScanning(false);
         return;
       }
@@ -171,6 +225,36 @@ export const WeighbridgePanel: React.FC<WeighbridgePanelProps> = ({
     setIsScanning(false);
   }, [cameraType, cameraSettings, activeSubTab, state.tickets]);
 
+  // Toggle RTSP live feed
+  const toggleLiveFeed = async () => {
+    const electron = (window as any).electron;
+    if (showLiveFeed) {
+      setShowLiveFeed(false);
+      setLiveFeedUrl(null);
+      if (electron?.invoke) {
+        await electron.invoke('stop-live-feed');
+      }
+      addLog('Live feed dihentikan.');
+    } else {
+      if (electron?.invoke) {
+        addLog('Memulai RTSP live feed via ffmpeg...');
+        const result = await electron.invoke('start-live-feed', cameraSettings.ip);
+        if (result.success) {
+          setLiveFeedUrl(result.url);
+          setShowLiveFeed(true);
+          addLog(`Live feed aktif: ${result.url}`);
+        } else {
+          addLog(`Gagal start live feed: ${result.error}`);
+          setOcrStatus('Gagal memulai live feed. Pastikan ffmpeg ter-install.');
+        }
+      } else {
+        // Fallback: direct MJPEG URL for browser
+        setShowLiveFeed(true);
+        addLog('Live feed via direct URL (browser mode).');
+      }
+    }
+  };
+
   const handleCloseSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!closeForm.ticketId || !closeForm.tareWeight) return;
@@ -214,6 +298,67 @@ export const WeighbridgePanel: React.FC<WeighbridgePanelProps> = ({
         </button>
       </div>
 
+      {/* ================================================================= */}
+      {/* LIVE WEIGHT DISPLAY - CAS 200i                                     */}
+      {/* ================================================================= */}
+      <div className={`rounded-3xl p-6 shadow-lg border-2 transition-all ${
+        scaleConnected 
+          ? scaleStable 
+            ? 'bg-gradient-to-r from-emerald-900 to-emerald-800 border-emerald-500/50' 
+            : 'bg-gradient-to-r from-slate-900 to-slate-800 border-amber-500/50'
+          : 'bg-gradient-to-r from-slate-900 to-slate-800 border-slate-700'
+      }`}>
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center space-x-3">
+            <Scale className="w-5 h-5 text-white/70" />
+            <span className="text-xs font-black uppercase tracking-widest text-white/60">
+              CAS 200i — Timbangan Live
+            </span>
+          </div>
+          <div className="flex items-center space-x-3">
+            {scaleStable && scaleConnected && (
+              <span className="bg-emerald-500/20 text-emerald-400 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border border-emerald-500/30">
+                STABIL
+              </span>
+            )}
+            {scaleConnected && !scaleStable && (
+              <span className="bg-amber-500/20 text-amber-400 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border border-amber-500/30 animate-pulse">
+                BERGERAK
+              </span>
+            )}
+            <div className={`flex items-center space-x-2 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
+              scaleConnected 
+                ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
+                : 'bg-red-500/20 text-red-400 border border-red-500/30'
+            }`}>
+              {scaleConnected ? <Wifi className="w-3 h-3" /> : <WifiOff className="w-3 h-3" />}
+              <span>{scaleConnected ? 'COM4 OK' : 'OFFLINE'}</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-end justify-between">
+          <div className="flex items-baseline space-x-2">
+            <span className={`font-mono font-black tracking-tight transition-all ${
+              scaleConnected ? 'text-7xl text-white' : 'text-7xl text-slate-600'
+            }`} style={{ fontVariantNumeric: 'tabular-nums' }}>
+              {scaleConnected ? liveWeight.toLocaleString('id-ID', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : '---'}
+            </span>
+            <span className="text-2xl font-black text-white/40">{scaleUnit}</span>
+          </div>
+
+          <button
+            type="button"
+            onClick={useCurrentWeight}
+            disabled={!scaleConnected || liveWeight <= 0}
+            className="bg-emerald-500 hover:bg-emerald-600 disabled:bg-slate-700 disabled:text-slate-500 text-white px-6 py-3 rounded-2xl font-black text-sm flex items-center space-x-2 transition-all shadow-lg shadow-emerald-500/20 disabled:shadow-none"
+          >
+            <Zap className="w-4 h-4" />
+            <span>GUNAKAN BERAT INI</span>
+          </button>
+        </div>
+      </div>
+
       {cameraSettings.showSettings && (
         <div className="bg-slate-800 p-6 rounded-3xl text-white shadow-xl flex gap-4 items-end animate-in fade-in slide-in-from-top-4">
           <div className="flex-1">
@@ -246,14 +391,14 @@ export const WeighbridgePanel: React.FC<WeighbridgePanelProps> = ({
               <div className="text-slate-600 italic">Antri log aktivitas...</div>
             ) : (
               diagnosticLogs.map((log, i) => (
-                <div key={i} className={log.includes('Error') ? 'text-red-400' : log.includes('Berhasil') ? 'text-emerald-400' : 'text-slate-300'}>
+                <div key={i} className={log.includes('Error') ? 'text-red-400' : log.includes('Berhasil') || log.includes('OK') || log.includes('terhubung') ? 'text-emerald-400' : 'text-slate-300'}>
                   {log}
                 </div>
               ))
             )}
           </div>
           <div className="mt-4 text-[10px] text-slate-500 font-medium bg-slate-800/50 p-3 rounded-xl border border-white/5">
-            <p>💡 <span className="text-slate-300">TIPS:</span> Jika Live Feed Muncul tapi Snapshot Gagal, pastikan Windows App memiliki izin jaringan.</p>
+            <p>💡 <span className="text-slate-300">TIPS:</span> Pastikan ffmpeg ter-install untuk Live Feed RTSP. Snapshot tetap bisa tanpa ffmpeg.</p>
           </div>
         </div>
       )}
@@ -285,7 +430,7 @@ export const WeighbridgePanel: React.FC<WeighbridgePanelProps> = ({
 
       <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-200">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-          {/* Kamera & ALPR Feed Section - Shared between open/close */}
+          {/* Kamera & ALPR Feed Section */}
           <div className="space-y-6">
             <div className="flex bg-slate-100 p-1.5 rounded-2xl w-fit">
               <button 
@@ -315,7 +460,14 @@ export const WeighbridgePanel: React.FC<WeighbridgePanelProps> = ({
                 />
               ) : (
                 <>
-                  {showLiveFeed ? (
+                  {showLiveFeed && liveFeedUrl ? (
+                    <img 
+                      src={liveFeedUrl}
+                      alt="Live Feed"
+                      className="w-full aspect-video object-cover rounded-xl"
+                      onError={() => setOcrStatus('Stream Error. Pastikan ffmpeg & kamera aktif.')}
+                    />
+                  ) : showLiveFeed ? (
                     <img 
                       src={`http://${cameraSettings.ip}/cgi-bin/mjpg/video.cgi?subtype=1`}
                       alt="Live Feed"
@@ -367,7 +519,7 @@ export const WeighbridgePanel: React.FC<WeighbridgePanelProps> = ({
               </button>
               <button
                 type="button"
-                onClick={() => setShowLiveFeed(!showLiveFeed)}
+                onClick={toggleLiveFeed}
                 className={`px-6 py-4 rounded-2xl font-black flex items-center justify-center transition-all shadow-md ${
                   showLiveFeed ? 'bg-red-50 text-red-600 border-2 border-red-100' : 'bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200'
                 }`}
@@ -417,15 +569,27 @@ export const WeighbridgePanel: React.FC<WeighbridgePanelProps> = ({
                   <Scale className="w-3 h-3 mr-1" />
                   Berat Kotor (Gross) - KG
                 </label>
-                <input
-                  type="number"
-                  required
-                  min="0"
-                  placeholder="0"
-                  value={openForm.grossWeight}
-                  onChange={e => setOpenForm({...openForm, grossWeight: e.target.value})}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-mono text-lg"
-                />
+                <div className="flex space-x-2">
+                  <input
+                    type="number"
+                    required
+                    min="0"
+                    placeholder="0"
+                    value={openForm.grossWeight}
+                    onChange={e => setOpenForm({...openForm, grossWeight: e.target.value})}
+                    className="flex-1 bg-slate-50 border border-slate-200 rounded-xl p-3 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-mono text-lg"
+                  />
+                  {scaleConnected && (
+                    <button
+                      type="button"
+                      onClick={useCurrentWeight}
+                      className="bg-emerald-100 hover:bg-emerald-200 text-emerald-700 px-4 rounded-xl font-bold text-xs transition-all flex items-center space-x-1"
+                    >
+                      <Zap className="w-3 h-3" />
+                      <span>TIMBANGAN</span>
+                    </button>
+                  )}
+                </div>
               </div>
 
               <div className="space-y-2">
@@ -491,15 +655,27 @@ export const WeighbridgePanel: React.FC<WeighbridgePanelProps> = ({
                         <Scale className="w-3 h-3 mr-1" />
                         Berat Kosong (Tare) - KG
                       </label>
-                      <input
-                        type="number"
-                        required
-                        min="0"
-                        placeholder="0"
-                        value={closeForm.tareWeight}
-                        onChange={e => setCloseForm({...closeForm, tareWeight: e.target.value})}
-                        className="w-full bg-amber-50 border border-amber-200 rounded-xl p-3 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 font-mono text-lg text-amber-900"
-                      />
+                      <div className="flex space-x-2">
+                        <input
+                          type="number"
+                          required
+                          min="0"
+                          placeholder="0"
+                          value={closeForm.tareWeight}
+                          onChange={e => setCloseForm({...closeForm, tareWeight: e.target.value})}
+                          className="flex-1 bg-amber-50 border border-amber-200 rounded-xl p-3 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 font-mono text-lg text-amber-900"
+                        />
+                        {scaleConnected && (
+                          <button
+                            type="button"
+                            onClick={useCurrentWeight}
+                            className="bg-amber-100 hover:bg-amber-200 text-amber-700 px-4 rounded-xl font-bold text-xs transition-all flex items-center space-x-1"
+                          >
+                            <Zap className="w-3 h-3" />
+                            <span>TIMBANGAN</span>
+                          </button>
+                        )}
+                      </div>
                     </div>
                     
                     {closeForm.tareWeight && (
