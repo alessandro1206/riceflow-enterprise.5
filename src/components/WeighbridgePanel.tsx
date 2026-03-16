@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { Scale, Truck, CheckCircle2, User, Database, Clock, Camera, RefreshCw, Settings, Monitor, Wifi, WifiOff, Zap } from 'lucide-react';
+import { Scale, Truck, CheckCircle2, User, Database, Clock, Camera, RefreshCw, Settings, Monitor, Wifi, WifiOff, Zap, AlertCircle } from 'lucide-react';
 import Tesseract from 'tesseract.js';
 import Webcam from 'react-webcam';
 
@@ -46,6 +46,7 @@ export const WeighbridgePanel: React.FC<WeighbridgePanelProps> = ({
   const [liveWeight, setLiveWeight] = useState<number>(0);
   const [scaleStable, setScaleStable] = useState(false);
   const [scaleConnected, setScaleConnected] = useState(false);
+  const [scaleError, setScaleError] = useState<string | null>(null);
   const [scaleUnit, setScaleUnit] = useState('KG');
   
   const addLog = (msg: string) => {
@@ -80,8 +81,10 @@ export const WeighbridgePanel: React.FC<WeighbridgePanelProps> = ({
     electron.on('scale-status', (status: any) => {
       setScaleConnected(status.connected);
       if (status.connected) {
+        setScaleError(null);
         addLog(`Timbangan CAS 200i terhubung di ${status.port}`);
       } else {
+        setScaleError(status.error || 'Terputus');
         addLog(`Timbangan terputus: ${status.error || 'Disconnected'}`);
       }
     });
@@ -109,6 +112,14 @@ export const WeighbridgePanel: React.FC<WeighbridgePanelProps> = ({
     } else {
       setCloseForm(prev => ({ ...prev, tareWeight: String(liveWeight) }));
       addLog(`Berat Kosong diisi dari timbangan: ${liveWeight} KG`);
+    }
+  };
+
+  const retryScaleConnection = () => {
+    if ((window as any).electron?.send) {
+      addLog('Mencoba menghubungkan ulang timbangan...');
+      setScaleError('Menghubungkan...');
+      (window as any).electron.send('retry-scale');
     }
   };
 
@@ -326,16 +337,37 @@ export const WeighbridgePanel: React.FC<WeighbridgePanelProps> = ({
                 BERGERAK
               </span>
             )}
-            <div className={`flex items-center space-x-2 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
-              scaleConnected 
-                ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
-                : 'bg-red-500/20 text-red-400 border border-red-500/30'
-            }`}>
-              {scaleConnected ? <Wifi className="w-3 h-3" /> : <WifiOff className="w-3 h-3" />}
-              <span>{scaleConnected ? 'COM4 OK' : 'OFFLINE'}</span>
+            <div className="flex flex-col items-end">
+              <div className={`flex items-center space-x-2 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
+                scaleConnected 
+                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
+                  : 'bg-red-500/20 text-red-400 border border-red-500/30'
+              }`}>
+                {scaleConnected ? <Wifi className="w-3 h-3" /> : <WifiOff className="w-3 h-3" />}
+                <span>{scaleConnected ? 'COM4 OK' : 'OFFLINE'}</span>
+              </div>
+              {!scaleConnected && (
+                <button 
+                  onClick={retryScaleConnection}
+                  className="mt-2 text-[9px] font-bold text-white/40 hover:text-emerald-400 underline decoration-white/10 transition-colors uppercase tracking-widest"
+                >
+                  Coba Hubungkan Lagi
+                </button>
+              )}
             </div>
           </div>
         </div>
+
+        {scaleError && !scaleConnected && (
+          <div className="px-6 mb-4">
+            <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 flex items-start space-x-2">
+              <AlertCircle className="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" />
+              <p className="text-[10px] font-medium text-red-300 leading-relaxed">
+                <span className="font-black">ERROR TIMBANGAN:</span> {scaleError}
+              </p>
+            </div>
+          </div>
+        )}
 
         <div className="flex items-end justify-between">
           <div className="flex items-baseline space-x-2">
