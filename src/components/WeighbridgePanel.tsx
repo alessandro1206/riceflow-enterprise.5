@@ -30,7 +30,7 @@ export const WeighbridgePanel: React.FC<WeighbridgePanelProps> = ({
   // Camera & ALPR State
   const [cameraType, setCameraType] = useState<'ip' | 'local'>('ip');
   const [cameraSettings, setCameraSettings] = useState({
-    ip: '192.168.31.200',
+    ip: '192.168.1.190',
     user: 'admin',
     pass: 'Admin123',
     showSettings: false
