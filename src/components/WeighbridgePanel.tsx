@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { Scale, Truck, CheckCircle2, User, Database, Clock, Camera, RefreshCw, Settings, Monitor, Wifi, WifiOff, Zap, AlertCircle } from 'lucide-react';
+import { Scale, Truck, CheckCircle2, User, Database, Clock, Camera, RefreshCw, Settings, Monitor, Wifi, WifiOff, Zap, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import Tesseract from 'tesseract.js';
 import Webcam from 'react-webcam';
 
@@ -40,8 +40,43 @@ export const WeighbridgePanel: React.FC<WeighbridgePanelProps> = ({
   const [showLiveFeed, setShowLiveFeed] = useState(false);
   const [liveFeedUrl, setLiveFeedUrl] = useState<string | null>(null);
   const [lastSnapshot, setLastSnapshot] = useState<string | null>(null);
+  const [lastProcessedSnapshot, setLastProcessedSnapshot] = useState<string | null>(null);
+  const [lastInvertedSnapshot, setLastInvertedSnapshot] = useState<string | null>(null);
   const [ocrStatus, setOcrStatus] = useState('');
   const [diagnosticLogs, setDiagnosticLogs] = useState<string[]>([]);
+  const [showAIVision, setShowAIVision] = useState(false);
+  const [aiSensitivity, setAiSensitivity] = useState(130);
+  const [aiInvert, setAiInvert] = useState(false);
+  const [isExpertAILoading, setIsExpertAILoading] = useState(false);
+  const [hfToken, setHfToken] = useState<string>(localStorage.getItem('hf_token') || '');
+  const [useLocalSmartAI, setUseLocalSmartAI] = useState<boolean>(localStorage.getItem('use_local_ai') === 'true');
+
+  // Persist HF Token & Local AI toggle
+  useEffect(() => {
+    localStorage.setItem('hf_token', hfToken);
+    localStorage.setItem('use_local_ai', useLocalSmartAI.toString());
+  }, [hfToken, useLocalSmartAI]);
+  const [lastClosedTicket, setLastClosedTicket] = useState<any | null>(null);
+
+  // Video Devices State
+  const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
+  const [selectedDeviceId, setSelectedDeviceId] = useState<string | undefined>(localStorage.getItem('selected_webcam') || undefined);
+
+  const handleDevices = useCallback(
+    (mediaDevices: MediaDeviceInfo[]) =>
+      setDevices(mediaDevices.filter(({ kind }) => kind === "videoinput")),
+    [setDevices]
+  );
+
+  useEffect(() => {
+    navigator.mediaDevices.enumerateDevices().then(handleDevices);
+  }, [handleDevices]);
+
+  useEffect(() => {
+    if (selectedDeviceId) {
+      localStorage.setItem('selected_webcam', selectedDeviceId);
+    }
+  }, [selectedDeviceId]);
 
   // Scale State
   const [liveWeight, setLiveWeight] = useState<number>(0);
@@ -153,6 +188,133 @@ export const WeighbridgePanel: React.FC<WeighbridgePanelProps> = ({
     alert('Tiket Berhasil Dibuka!');
   };
 
+  // Revised Preprocessing: Adaptive Contrast, Grayscale, Inversion, and SMART-CROP with Region selection
+  const preprocessImage = async (base64Str: string, contrastBoost = 2.0, threshold = 130, invert = false, region: 'center' | 'top' | 'bottom' | 'all' = 'center'): Promise<string> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        if (!ctx) { resolve(base64Str); return; }
+
+        let sX = 0, sY = 0, sW = img.width, sH = img.height;
+        
+        if (region === 'center') {
+          sW = img.width * 0.7; sH = img.height * 0.5;
+          sX = (img.width - sW) / 2; sY = (img.height - sH) / 2;
+        } else if (region === 'top') {
+          sW = img.width * 0.8; sH = img.height * 0.4;
+          sX = (img.width - sW) / 2; sY = img.height * 0.1;
+        } else if (region === 'bottom') {
+          sW = img.width * 0.8; sH = img.height * 0.4;
+          sX = (img.width - sW) / 2; sY = img.height * 0.5;
+        }
+
+        canvas.width = sW;
+        canvas.height = sH;
+        ctx.drawImage(img, sX, sY, sW, sH, 0, 0, sW, sH);
+
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imageData.data;
+        for (let i = 0; i < data.length; i += 4) {
+          let b = (0.299 * data[i]) + (0.587 * data[i + 1]) + (0.114 * data[i + 2]);
+          let v = (b - 128) * contrastBoost + 128;
+          v = v > threshold ? 255 : 0;
+          if (invert) v = 255 - v;
+          data[i] = data[i+1] = data[i+2] = v;
+        }
+        ctx.putImageData(imageData, 0, 0);
+        const processed = canvas.toDataURL('image/jpeg', 0.85);
+        if (invert) setLastInvertedSnapshot(processed);
+        else setLastProcessedSnapshot(processed);
+        resolve(processed);
+      };
+      img.onerror = () => resolve(base64Str);
+      img.src = base64Str;
+    });
+  };
+
+  // Hugging Face Expert AI Call
+  const callExpertAI = async (base64Str: string): Promise<string | null> => {
+    if (!base64Str) return null;
+    setIsExpertAILoading(true);
+    addLog('Expert AI: Mengirim foto ke Cloud (Qwen-2-VL)...');
+
+    try {
+      if (!hfToken || !hfToken.startsWith('hf_')) {
+        addLog('Expert AI Warning: Token HF tidak valid atau kosong. Silakan isi di input Token.');
+      }
+
+      const actualBase64 = base64Str.split(',')[1];
+      const response = await fetch("https://api-inference.huggingface.co/models/Qwen/Qwen2-VL-7B-Instruct", {
+        headers: {
+          "Authorization": `Bearer ${hfToken || "hf_YmNNoVofkYFpQeYqXkZpGZkGnGzGzGzGzGzGz"}`,
+          "Content-Type": "application/json",
+        },
+        method: "POST",
+        body: JSON.stringify({
+          inputs: {
+            image: actualBase64,
+            prompt: "Identify the vehicle license plate number in this image. Precise plate number only."
+          }
+        }),
+      });
+
+      if (!response.ok) {
+        const errJson = await response.json().catch(() => ({}));
+        const errMsg = errJson.error || errJson.message || 'Unknown Error';
+        addLog(`Cloud AI Error (${response.status}): ${errMsg}`);
+        if (response.status === 401) addLog('Saran: Periksa Hugging Face Token Anda.');
+        if (response.status === 503) addLog('Saran: Server sedang sibuk/loading. Tunggu 30 detik lalu coba lagi.');
+        return null;
+      }
+
+      const result = await response.json();
+      const text = (Array.isArray(result) ? result[0]?.generated_text : result?.generated_text || result?.error || JSON.stringify(result)) || '';
+      
+      addLog(`Cloud AI Raw Response: ${text.substring(0, 50)}...`);
+
+      const match = text.toUpperCase().replace(/[^A-Z0-9\s]/g, '').match(/[A-Z]{1,2}\s?\d{1,4}\s?[A-Z]{1,3}/);
+      if (match) {
+        const foundPlate = match[0].replace(/\s+/g, ' ');
+        return foundPlate;
+      }
+      return null;
+    } catch (err: any) {
+      addLog(`Expert AI Cloud Exception: ${err.message}`);
+      return null;
+    } finally {
+      setIsExpertAILoading(false);
+    }
+  };
+
+  // Local AI (YOLOv10 + EasyOCR) Call
+  const runLocalSmartAI = async (base64Str: string): Promise<string | null> => {
+    if (!base64Str) return null;
+    try {
+      addLog('Local Smart AI: Mengolah gambar (YOLOv10)...');
+      const result = await (window as any).electron.invoke('run-local-ai', base64Str);
+      if (result.success && result.plate) {
+        return result.plate;
+      }
+      if (result.error) addLog(`Local AI Error: ${result.error}`);
+      return null;
+    } catch (err: any) {
+      addLog(`Local AI Exception: ${err.message}`);
+      return null;
+    }
+  };
+
+  const installAIDependencies = async () => {
+    const confirm = window.confirm("Ini akan men-download ~2GB library AI (PyTorch, YOLO, EasyOCR). Lanjutkan?");
+    if (!confirm) return;
+    
+    addLog("Memulai instalasi library AI... Cek terminal/logs.");
+    // In a real app we'd trigger the .bat via electron. 
+    // For now we'll assume the user runs the .bat manually or we can try spawn.
+    alert("Silakan buka folder 'WEIGHBRIDGE_FOR_USB' dan jalankan 'install_ai.bat' sebagai Administrator.");
+  };
+
   const captureAndScan = useCallback(async () => {
     setIsScanning(true);
     setOcrStatus('Mengambil Gambar...');
@@ -202,20 +364,72 @@ export const WeighbridgePanel: React.FC<WeighbridgePanelProps> = ({
 
     if (imageToScan) {
       try {
-        addLog('Mulai AI OCR Tesseract...');
-        setOcrStatus('Mengenali Plat Nomor (AI)...');
-        const { data: { text } } = await Tesseract.recognize(imageToScan, 'eng');
-        addLog(`OCR Raw Output: ${text.replace(/\n/g, ' ')}`);
+        let plateCandidate: string | null = null;
 
-        const cleanPlate = text.toUpperCase().replace(/[^A-Z0-9\s]/g, '').trim();
-        const match = cleanPlate.match(/[A-Z]{1,2}\s?\d{1,4}\s?[A-Z]{1,3}/);
+        // --- PASS 1: LOCAL SMART AI (Prioritized if enabled) ---
+        if (useLocalSmartAI) {
+          setOcrStatus('Mencoba Local Smart AI (YOLOv10)...');
+          addLog('ALPR: Menggunakan Local Smart AI sebagai engine utama...');
+          const localResult = await runLocalSmartAI(imageToScan);
+          if (localResult) {
+            plateCandidate = localResult;
+            addLog(`Local Smart AI Sukses: ${plateCandidate}`);
+          }
+        }
 
-        if (match) {
-          const plateNumber = match[0];
-          addLog(`Plat Terdeteksi: ${plateNumber}`);
+        // --- PASS 2: EXPERT CLOUD AI (Secondary / Fallback if level 1 fails) ---
+        if (!plateCandidate) {
+          setOcrStatus('Menghubungi Cloud AI (Qwen-VL High-Accuracy)...');
+          addLog('ALPR: Mencoba Cloud AI (Expert)...');
+          const cloudResult = await callExpertAI(imageToScan);
+          if (cloudResult) {
+            plateCandidate = cloudResult;
+            addLog(`Cloud AI Sukses: ${plateCandidate}`);
+          }
+        }
+
+        // --- PASS 3: OFFLINE FALLBACK (Tesseract) ---
+        if (!plateCandidate) {
+          addLog('Cloud/Smart AI Gagal. Switching to Offline Deep-Scan...');
+          setOcrStatus('Mencoba Offline Deep-Scan...');
+          
+          const optS = {
+            // @ts-ignore
+            tessedit_char_whitelist: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ',
+            tessedit_pageseg_mode: '7'
+          };
+
+          const passes = [
+            { region: 'center', inv: aiInvert },
+            { region: 'center', inv: !aiInvert },
+            { region: 'bottom', inv: aiInvert },
+            { region: 'all', inv: false }
+          ];
+
+          for (let i = 0; i < passes.length; i++) {
+            const pass = passes[i];
+            addLog(`Offline Pass ${i+1}: Scan ${pass.region}...`);
+            // @ts-ignore
+            const proc = await preprocessImage(imageToScan, 2.5, aiSensitivity, pass.inv, pass.region);
+            // @ts-ignore
+            const res = await Tesseract.recognize(proc, 'eng', { ...optS });
+            const raw = res.data.text.toUpperCase().replace(/[^A-Z0-9]/g, '').trim();
+            const match = raw.match(/[A-Z]{1,2}\d{1,4}[A-Z]{1,3}/);
+            if (match) {
+              plateCandidate = match[0];
+              addLog(`Offline Pass ${i+1} Berhasil: ${plateCandidate}`);
+              break;
+            }
+          }
+        }
+
+        // --- FINAL RESULT HANDLING ---
+        if (plateCandidate) {
+          const plateNumber = plateCandidate;
           if (activeSubTab === 'open') {
             setOpenForm(prev => ({ ...prev, nopol: plateNumber }));
             setOcrStatus(`Berhasil! Plat: ${plateNumber}`);
+            addLog(`ALPR Sukses (Open): ${plateNumber}`);
           } else {
             const openTicks = state.tickets?.filter((t: any) => t.status === 'OPEN') || [];
             const found = openTicks.find((t: any) => 
@@ -223,15 +437,16 @@ export const WeighbridgePanel: React.FC<WeighbridgePanelProps> = ({
             );
             if (found) {
               setCloseForm(prev => ({ ...prev, ticketId: found.id }));
-              setOcrStatus(`Berhasil! Tiket: ${plateNumber}`);
+              setOcrStatus(`Berhasil! Menemukan Tiket: ${found.id}`);
+              addLog(`ALPR Sukses (Close): Tiket ${found.id} ditemukan.`);
             } else {
-              addLog(`Warning: Plat ${plateNumber} tidak ada di tiket OPEN.`);
-              setOcrStatus(`Plat ${plateNumber} tidak ada di tiket.`);
+              setOcrStatus(`Plat ${plateNumber} terdeteksi, tapi tiket tidak ditemukan.`);
+              addLog(`ALPR Warning: Plat ${plateNumber} tidak punya tiket OPEN.`);
             }
           }
         } else {
-          addLog('Info: Plat tidak terbaca jelas oleh AI.');
-          setOcrStatus('Plat tidak terbaca jelas.');
+          setOcrStatus('Tidak ada plat terdeteksi.');
+          addLog('Semua Pass (Cloud & Offline) Gagal. Periksa kamera.');
         }
       } catch (err: any) {
         addLog(`Error AI: ${err.message}`);
@@ -288,8 +503,20 @@ export const WeighbridgePanel: React.FC<WeighbridgePanelProps> = ({
       netWeight: netWeight,
     });
 
+    setLastClosedTicket({
+      ...ticket,
+      dateOut: new Date().toISOString().split('T')[0],
+      timeOut: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
+      tareWeight: tare,
+      netWeight: netWeight,
+    });
+
     setCloseForm({ ticketId: '', tareWeight: '' });
-    alert(`Tiket Ditutup! Tonase Bersih: ${netWeight} KG`);
+    // alert(`Tiket Ditutup! Tonase Bersih: ${netWeight} KG`);
+  };
+
+  const handlePrint = () => {
+    window.print();
   };
 
   const openTickets = state.tickets?.filter((t: any) => t.status === 'OPEN') || [];
@@ -397,52 +624,206 @@ export const WeighbridgePanel: React.FC<WeighbridgePanelProps> = ({
       </div>
 
       {cameraSettings.showSettings && (
-        <div className="bg-slate-800 p-6 rounded-3xl text-white shadow-xl flex gap-4 items-end animate-in fade-in slide-in-from-top-4">
-          <div className="w-40">
-             <label className="text-xs font-black uppercase tracking-widest text-slate-400 mb-2 block">Port (HTTP)</label>
-             <input value={cameraSettings.port} onChange={e => setCameraSettings({...cameraSettings, port: e.target.value})} className="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 focus:border-emerald-500 font-mono text-white" />
+        <div className="space-y-4 animate-in fade-in slide-in-from-top-4">
+          {/* Camera Auth Settings */}
+          <div className="bg-slate-800 p-6 rounded-3xl text-white shadow-xl flex gap-4 items-end">
+            <div className="w-40">
+               <label className="text-xs font-black uppercase tracking-widest text-slate-400 mb-2 block">Port (HTTP)</label>
+               <input value={cameraSettings.port} onChange={e => setCameraSettings({...cameraSettings, port: e.target.value})} className="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 focus:border-emerald-500 font-mono text-white" />
+            </div>
+            <div className="flex-1">
+               <label className="text-xs font-black uppercase tracking-widest text-slate-400 mb-2 block">IP Camera Dahua</label>
+               <input value={cameraSettings.ip} onChange={e => setCameraSettings({...cameraSettings, ip: e.target.value})} className="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 focus:border-emerald-500 font-mono" />
+            </div>
+            <div className="flex-1">
+               <label className="text-xs font-black uppercase tracking-widest text-slate-400 mb-2 block">Username</label>
+               <input value={cameraSettings.user} onChange={e => setCameraSettings({...cameraSettings, user: e.target.value})} className="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 focus:border-emerald-500 font-mono" />
+            </div>
+            <div className="flex-1">
+               <label className="text-xs font-black uppercase tracking-widest text-slate-400 mb-2 block">Pilih Webcam Lokal</label>
+               <select 
+                 value={selectedDeviceId} 
+                 onChange={e => setSelectedDeviceId(e.target.value)}
+                 className="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 focus:border-emerald-500 font-mono text-white"
+               >
+                 <option value="">Default Camera</option>
+                 {devices.map((device, key) => (
+                   <option key={key} value={device.deviceId}>
+                     {device.label || `Camera ${key + 1}`}
+                   </option>
+                 ))}
+               </select>
+            </div>
+            <div className="flex-1">
+               <label className="text-xs font-black uppercase tracking-widest text-slate-400 mb-2 block">Password</label>
+               <input type="password" value={cameraSettings.pass} onChange={e => setCameraSettings({...cameraSettings, pass: e.target.value})} className="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 focus:border-emerald-500 font-mono" />
+            </div>
+            <div className="flex gap-2">
+              <button onClick={captureAndScan} className="bg-slate-700 hover:bg-slate-600 text-white font-bold px-4 py-3 rounded-xl flex items-center">
+                <Camera className="w-4 h-4 mr-2" />
+                Test Snapshot
+              </button>
+              <button onClick={() => setCameraSettings({...cameraSettings, showSettings: false})} className="bg-emerald-600 hover:bg-emerald-700 font-bold px-6 py-3 rounded-xl">Tutup</button>
+            </div>
           </div>
-          <div className="flex-1">
-             <label className="text-xs font-black uppercase tracking-widest text-slate-400 mb-2 block">IP Camera Dahua</label>
-             <input value={cameraSettings.ip} onChange={e => setCameraSettings({...cameraSettings, ip: e.target.value})} className="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 focus:border-emerald-500 font-mono" />
+
+          {/* Diagnostic Logs & AI Vision Preview Section */}
+          <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 shadow-2xl">
+            <div className="flex justify-between items-center mb-4">
+              <h4 className="text-white font-black text-xs uppercase tracking-widest flex items-center">
+                <RefreshCw className="w-4 h-4 mr-2 text-emerald-500" />
+                Diagnostic Logs & AI Vision
+              </h4>
+              <button onClick={() => setDiagnosticLogs([])} className="text-[10px] text-slate-500 hover:text-white font-bold">CLEAR LOGS</button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-4">
+                 <div className="bg-black/50 p-4 rounded-2xl font-mono text-[10px] space-y-1 h-32 overflow-y-auto border border-white/5 shadow-inner">
+                   {diagnosticLogs.length === 0 ? (
+                     <div className="text-slate-600 italic">Antri log aktivitas...</div>
+                   ) : (
+                     diagnosticLogs.map((log, i) => (
+                       <div key={i} className={log.includes('Error') ? 'text-red-400' : log.includes('Berhasil') || log.includes('OK') || log.includes('terhubung') ? 'text-emerald-400' : 'text-slate-300'}>
+                         {log}
+                       </div>
+                     ))
+                   )}
+                 </div>
+                 
+                 <div className="bg-slate-800/80 p-4 rounded-2xl border border-white/5 space-y-3">
+                    <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-slate-400">
+                       <span>Sensitivitas AI</span>
+                       <span className="text-emerald-500">{aiSensitivity}</span>
+                    </div>
+                    <input 
+                      type="range" min="50" max="220" value={aiSensitivity} 
+                      onChange={(e) => setAiSensitivity(parseInt(e.target.value))}
+                      className="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+                    />
+                    
+                    <button 
+                      type="button"
+                      onClick={() => setAiInvert(!aiInvert)}
+                      className={`w-full py-3 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center border transition-all ${aiInvert ? 'bg-emerald-600 border-white/20 text-white shadow-lg' : 'bg-slate-700 border-white/5 text-slate-400'}`}
+                    >
+                       <RefreshCw className={`w-3 h-3 mr-2 ${aiInvert ? 'animate-spin-slow' : ''}`} />
+                       {aiInvert ? 'Mode: Plat Hitam (Invert)' : 'Mode: Plat Putih (Normal)'}
+                    </button>
+                    
+                    <button 
+                        type="button"
+                        disabled={isExpertAILoading}
+                        onClick={async () => {
+                          if (lastSnapshot) {
+                            const res = await callExpertAI(lastSnapshot);
+                            if (res) {
+                              setOpenForm(prev => ({ ...prev, nopol: res }));
+                              setOcrStatus(`Berhasil! (Manual AI): ${res}`);
+                              alert(`AI Berhasil Mendeteksi: ${res}`);
+                            } else {
+                              alert("AI tidak dapat menemukan plat.");
+                            }
+                          }
+                        }}
+                        className={`w-full py-4 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center border transition-all ${isExpertAILoading ? 'bg-slate-800 text-slate-500 opacity-50' : 'bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white shadow-xl shadow-indigo-500/20 border-white/10'}`}
+                    >
+                        <Zap className={`w-3 h-3 mr-2 ${isExpertAILoading ? 'animate-pulse' : 'text-yellow-400'}`} />
+                        {isExpertAILoading ? 'AI Expert Sedang Berpikir...' : 'Gunakan AI Pintar (Cloud)'}
+                    </button>
+
+                    <div className="flex flex-col gap-1">
+                      <div className="flex gap-2">
+                        <button 
+                            type="button"
+                            onClick={() => setShowAIVision(!showAIVision)}
+                            className="flex-1 bg-slate-700 hover:bg-slate-600 text-slate-300 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center border border-white/5 transition-all shadow-md"
+                        >
+                            {showAIVision ? <EyeOff className="w-3 h-3 mr-2 text-red-400" /> : <Eye className="w-3 h-3 mr-2 text-emerald-400" />}
+                            {showAIVision ? 'Asli' : 'Filter AI'}
+                        </button>
+                        <input 
+                          type="password"
+                          placeholder="HF Token..."
+                          value={hfToken}
+                          onChange={(e) => setHfToken(e.target.value)}
+                          className="w-1/3 bg-black/40 border border-white/5 rounded-xl px-3 py-2 text-[8px] text-white focus:border-violet-500 outline-none transition-all"
+                          title="Hugging Face API Token (Free)"
+                        />
+                      </div>
+                      <a 
+                        href="https://huggingface.co/settings/tokens" 
+                        target="_blank" 
+                        rel="noreferrer"
+                        className="text-[7px] text-violet-400 hover:text-violet-300 text-right pr-1"
+                      >
+                        Cara dpt Token Qwen (Hugging Face) →
+                      </a>
+                    </div>
+
+                    <div className="flex items-center justify-between p-3 bg-slate-800/80 rounded-xl border border-white/5">
+                        <div className="flex flex-col">
+                            <span className="text-[10px] text-slate-300 font-bold">AI LOKAL (YOLO+OCR)</span>
+                            <span className="text-[8px] text-emerald-500 font-medium">Dataset: INDONESIA PLAT (B, L, D...)</span>
+                        </div>
+                        <div className="flex gap-2">
+                             <button 
+                                type="button"
+                                onClick={installAIDependencies}
+                                className="px-2 py-1 bg-violet-600 hover:bg-violet-500 text-white text-[8px] font-bold rounded-lg transition-colors"
+                             >
+                                INSTALL AI
+                             </button>
+                             <button 
+                                type="button"
+                                onClick={() => setUseLocalSmartAI(!useLocalSmartAI)}
+                                className={`w-10 h-5 rounded-full relative transition-colors ${useLocalSmartAI ? 'bg-emerald-500' : 'bg-slate-600'}`}
+                             >
+                                <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${useLocalSmartAI ? 'right-1' : 'left-1'}`} />
+                             </button>
+                        </div>
+                    </div>
+                 </div>
+              </div>
+
+              <div className="bg-black/40 rounded-2xl border border-white/10 flex items-center justify-center overflow-hidden h-[285px] relative group cursor-crosshair">
+                 {!lastSnapshot && <div className="text-slate-600 text-[10px] uppercase font-bold animate-pulse">Preview AI Kosong...</div>}
+                 {lastSnapshot && !showAIVision && (
+                   <img src={lastSnapshot} className="w-full h-full object-contain opacity-80" alt="Snapshot Raw" />
+                 )}
+                 {(lastProcessedSnapshot || lastInvertedSnapshot) && showAIVision && (
+                   <div className="w-full h-full relative">
+                     <img src={aiInvert ? lastInvertedSnapshot : lastProcessedSnapshot} className="w-full h-full object-contain" alt="Snapshot Processed" />
+                     <div className="absolute top-2 right-2 bg-emerald-600 text-white text-[8px] px-2 py-1 rounded-full font-black uppercase shadow-lg">AI Vision Active</div>
+                   </div>
+                 )}
+                 {lastSnapshot && (
+                    <div className="absolute bottom-2 left-2 bg-black/60 text-white/40 text-[8px] px-2 py-1 rounded-full font-bold uppercase tracking-widest group-hover:text-white transition-colors">
+                       {showAIVision ? (aiInvert ? 'AI INVERTED VIEW' : 'AI FILTERED VIEW') : 'RAW CAMERA VIEW'}
+                    </div>
+                 )}
+              </div>
+            </div>
+
+            <div className="mt-4 text-[10px] text-slate-500 font-medium bg-slate-800/50 p-3 rounded-xl border border-white/5">
+              <p>💡 <span className="text-slate-300 font-black">KALIBRASI:</span> Jika plate sulit terbaca, gunakan "AI Vision" untuk melihat apakah gambar terlalu gelap atau silau.</p>
+            </div>
           </div>
-          <div className="flex-1">
-             <label className="text-xs font-black uppercase tracking-widest text-slate-400 mb-2 block">Username</label>
-             <input value={cameraSettings.user} onChange={e => setCameraSettings({...cameraSettings, user: e.target.value})} className="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 focus:border-emerald-500 font-mono" />
-          </div>
-          <div className="flex-1">
-             <label className="text-xs font-black uppercase tracking-widest text-slate-400 mb-2 block">Password</label>
-             <input type="password" value={cameraSettings.pass} onChange={e => setCameraSettings({...cameraSettings, pass: e.target.value})} className="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 focus:border-emerald-500 font-mono" />
-          </div>
-          <button onClick={() => setCameraSettings({...cameraSettings, showSettings: false})} className="bg-emerald-600 hover:bg-emerald-700 font-bold px-6 py-3 rounded-xl">Tutup</button>
         </div>
       )}
 
-      {cameraSettings.showSettings && (
-        <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 animate-in fade-in slide-in-from-top-4 mt-2">
-          <div className="flex justify-between items-center mb-4">
-            <h4 className="text-white font-black text-xs uppercase tracking-widest flex items-center">
-              <RefreshCw className="w-4 h-4 mr-2 text-emerald-500" />
-              Diagnostic Logs (Troubleshooting)
-            </h4>
-            <button onClick={() => setDiagnosticLogs([])} className="text-[10px] text-slate-500 hover:text-white font-bold">CLEAR LOGS</button>
-          </div>
-          <div className="bg-black/50 p-4 rounded-2xl font-mono text-[10px] space-y-1 h-32 overflow-y-auto border border-white/5 shadow-inner">
-            {diagnosticLogs.length === 0 ? (
-              <div className="text-slate-600 italic">Antri log aktivitas...</div>
-            ) : (
-              diagnosticLogs.map((log, i) => (
-                <div key={i} className={log.includes('Error') ? 'text-red-400' : log.includes('Berhasil') || log.includes('OK') || log.includes('terhubung') ? 'text-emerald-400' : 'text-slate-300'}>
-                  {log}
-                </div>
-              ))
-            )}
-          </div>
-          <div className="mt-4 text-[10px] text-slate-500 font-medium bg-slate-800/50 p-3 rounded-xl border border-white/5">
-            <p>💡 <span className="text-slate-300">TIPS:</span> Pastikan ffmpeg ter-install untuk Live Feed RTSP. Snapshot tetap bisa tanpa ffmpeg.</p>
-          </div>
+      {/* OCR CALIBRATION TIPS */}
+      <div className="bg-emerald-50 border border-emerald-100 p-4 rounded-2xl flex items-start space-x-3">
+        <AlertCircle className="w-5 h-5 text-emerald-600 mt-0.5" />
+        <div className="text-xs text-emerald-800 leading-relaxed">
+          <p className="font-black uppercase tracking-widest mb-1">Tips Kalibrasi AI (OCR)</p>
+          <ul className="list-disc list-inside space-y-0.5 opacity-80">
+            <li>Pastikan plat nomor terlihat jelas dan tidak tertutup bayangan gelap.</li>
+            <li>Sudut kamera sebaiknya tegak lurus (straight) terhadap plat.</li>
+            <li>Bila salah baca (misal B jadi 8), cek <strong>Raw Output</strong> di log untuk penyesuaian posisi kamera.</li>
+          </ul>
         </div>
-      )}
+      </div>
 
       <div className="flex space-x-2 border-b border-slate-200">
         <button
@@ -497,7 +878,14 @@ export const WeighbridgePanel: React.FC<WeighbridgePanelProps> = ({
                   ref={webcamRef}
                   screenshotFormat="image/jpeg"
                   className="w-full aspect-video object-cover rounded-xl"
-                  videoConstraints={{ facingMode: 'environment' }}
+                  videoConstraints={{ 
+                    facingMode: 'environment',
+                    deviceId: selectedDeviceId ? { exact: selectedDeviceId } : undefined
+                  }}
+                  onUserMediaError={() => {
+                    addLog('Camera Error: Gagal mengakses webcam.');
+                    setOcrStatus('Error: Webcam tidak dapat diakses.');
+                  }}
                 />
               ) : (
                 <>
@@ -558,16 +946,18 @@ export const WeighbridgePanel: React.FC<WeighbridgePanelProps> = ({
                 {isScanning ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Camera className="w-5 h-5" />}
                 <span>{isScanning ? 'Membaca Plat...' : 'Ambil Snapshot & AI Scan'}</span>
               </button>
-              <button
-                type="button"
-                onClick={toggleLiveFeed}
-                className={`px-6 py-4 rounded-2xl font-black flex items-center justify-center transition-all shadow-md ${
-                  showLiveFeed ? 'bg-red-50 text-red-600 border-2 border-red-100' : 'bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200'
-                }`}
-              >
-                <div className={`w-3 h-3 rounded-full mr-2 ${showLiveFeed ? 'bg-red-600 animate-pulse' : 'bg-slate-400'}`}></div>
-                {showLiveFeed ? 'STOP' : 'LIVE'}
-              </button>
+              {cameraType === 'ip' && (
+                <button
+                  type="button"
+                  onClick={toggleLiveFeed}
+                  className={`px-6 py-4 rounded-2xl font-black flex items-center justify-center transition-all shadow-md ${
+                    showLiveFeed ? 'bg-red-50 text-red-600 border-2 border-red-100' : 'bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200'
+                  }`}
+                >
+                  <div className={`w-3 h-3 rounded-full mr-2 ${showLiveFeed ? 'bg-red-600 animate-pulse' : 'bg-slate-400'}`}></div>
+                  {showLiveFeed ? 'STOP' : 'LIVE'}
+                </button>
+              )}
             </div>
           </div>
 
@@ -744,6 +1134,104 @@ export const WeighbridgePanel: React.FC<WeighbridgePanelProps> = ({
           </div>
         </div>
       </div>
+
+      {/* PRINT TICKET MODAL / OVERLAY */}
+      {lastClosedTicket && (
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-300">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden border-t-8 border-emerald-500 print:shadow-none print:border-0 print:rounded-none">
+            <div className="p-8 space-y-6">
+              <div className="flex justify-between items-start print:hidden">
+                <div className="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest">
+                  TIKET BERHASIL DITUTUP
+                </div>
+                <button 
+                  onClick={() => setLastClosedTicket(null)}
+                  className="text-slate-400 hover:text-slate-600 transition-colors"
+                >
+                  <RefreshCw className="w-6 h-6 rotate-45" />
+                </button>
+              </div>
+
+              <div className="text-center space-y-1">
+                <h3 className="text-2xl font-black text-slate-800">BUKTI TIMBANGAN</h3>
+                <p className="text-sm font-bold text-slate-500 uppercase tracking-widest">PT. BUMI MAS GROUP</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-6 text-sm py-6 border-y border-slate-100 font-medium">
+                <div className="space-y-4">
+                  <div>
+                    <span className="text-[10px] text-slate-400 block font-black uppercase">NOMOR TIKET</span>
+                    <span className="text-slate-700 font-bold">#{lastClosedTicket.id.substring(0, 8)}</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-slate-400 block font-black uppercase">PLAT NOMOR</span>
+                    <span className="text-slate-700 font-bold text-lg">{lastClosedTicket.nopol}</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-slate-400 block font-black uppercase">SUPPLIER</span>
+                    <span className="text-slate-700 font-bold">{lastClosedTicket.supplierName}</span>
+                  </div>
+                </div>
+                <div className="space-y-4 text-right">
+                  <div>
+                    <span className="text-[10px] text-slate-400 block font-black uppercase">WAKTU MASUK</span>
+                    <span className="text-slate-700 font-bold">{lastClosedTicket.dateIn} {lastClosedTicket.timeIn}</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-slate-400 block font-black uppercase">WAKTU KELUAR</span>
+                    <span className="text-slate-700 font-bold">{lastClosedTicket.dateOut} {lastClosedTicket.timeOut}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-slate-50 rounded-2xl p-6 space-y-3 font-mono">
+                <div className="flex justify-between items-center text-slate-500">
+                  <span className="text-xs font-bold uppercase">BERAT KOTOR (GROSS)</span>
+                  <span className="text-lg font-black">{lastClosedTicket.grossWeight.toLocaleString('id-ID')} KG</span>
+                </div>
+                <div className="flex justify-between items-center text-slate-500">
+                  <span className="text-xs font-bold uppercase">BERAT KOSONG (TARE)</span>
+                  <span className="text-lg font-black">{lastClosedTicket.tareWeight.toLocaleString('id-ID')} KG</span>
+                </div>
+                <div className="pt-3 border-t-2 border-dashed border-slate-200 flex justify-between items-center text-emerald-600">
+                  <span className="text-sm font-black uppercase">BERAT BERSIH (NETTO)</span>
+                  <span className="text-3xl font-black">{lastClosedTicket.netWeight.toLocaleString('id-ID')} KG</span>
+                </div>
+              </div>
+
+              <div className="flex gap-4 print:hidden">
+                <button
+                  onClick={handlePrint}
+                  className="flex-1 bg-slate-900 hover:bg-slate-800 text-white font-black py-4 rounded-xl flex items-center justify-center space-x-2 transition-all shadow-xl"
+                >
+                  <RefreshCw className="w-4 h-4" /> {/* Placeholder for Printer Icon if needed, or stick to text */}
+                  <span>CETAK TIKET (PRINT)</span>
+                </button>
+                <button
+                  onClick={() => setLastClosedTicket(null)}
+                  className="px-8 bg-slate-100 hover:bg-slate-200 text-slate-600 font-black py-4 rounded-xl transition-all"
+                >
+                  TUTUP
+                </button>
+              </div>
+
+              <div className="hidden print:block text-center pt-8 space-y-4">
+                <div className="flex justify-between pt-12">
+                   <div className="text-center">
+                      <p className="text-xs font-bold mb-12">SUPPLIER</p>
+                      <p className="text-xs border-t border-slate-400 pt-1 w-32 mx-auto">( .................... )</p>
+                   </div>
+                   <div className="text-center">
+                      <p className="text-xs font-bold mb-12">OPERATOR</p>
+                      <p className="text-xs border-t border-slate-400 pt-1 w-32 mx-auto">( .................... )</p>
+                   </div>
+                </div>
+                <p className="text-[8px] text-slate-400 pt-4">Dicetak secara otomatis oleh Sistem Timbangan Bumi Mas</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       
       {/* List Recent Tickets */}
       <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-200 mt-6">
