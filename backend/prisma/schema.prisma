@@ -1,0 +1,37 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Inventory {
+  id               String @id @default(uuid())
+  itemName         String
+  type             String // GKG, GKP, Premium, Medium, Broken, Menir, Dedak
+  currentWeight    Float
+  minimumThreshold Float
+}
+
+model ProductionBook {
+  id              String   @id @default(uuid())
+  date            DateTime @default(now())
+  inputWeight     Float
+  outputPremium   Float
+  outputMedium    Float
+  outputBroken    Float
+  outputMenir     Float
+  outputDedak     Float
+  yieldPercentage Float
+}
+
+model Journal {
+  id           String   @id @default(uuid())
+  date         DateTime @default(now())
+  accountType  String
+  description  String
+  debitAmount  Float
+  creditAmount Float
+}

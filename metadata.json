@@ -1,0 +1,7 @@
+{
+  "name": "RiceFlow Enterprise",
+  "description": "Integrated management system for rice production and trading entities, featuring inventory tracking, inter-company transfers, and AI-driven business insights.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
