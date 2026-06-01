@@ -6,6 +6,8 @@ import { TradingPanel } from './components/TradingPanel.tsx';
 import { DirectSalesPanel } from './components/DirectSalesPanel.tsx';
 import { FinancePanel } from './components/FinancePanel.tsx';
 import { Login } from './components/Login.tsx';
+import { CRMPanel } from './components/CRMPanel.tsx';
+import { ExpensePanel } from './components/ExpensePanel.tsx';
 import { BusinessState, JournalLine, JournalEntry } from './types.ts';
 
 const INITIAL_STATE: BusinessState = {
@@ -88,9 +90,11 @@ export default function App() {
          <button onClick={handleLogout} className="bg-red-100 text-red-600 px-4 py-2 rounded-xl text-sm font-bold hover:bg-red-200">Logout</button>
       </div>
       {activeTab === 'dashboard' && <Dashboard state={state} setActiveTab={setActiveTab} />}
+      {activeTab === 'crm' && <CRMPanel state={state} setState={setState} />}
       {activeTab === 'production' && <ProductionPanel state={state} onMillingSubmit={onMillingSubmit} onAddExpense={()=>{}} />}
       {activeTab === 'direct_sales' && <DirectSalesPanel state={state} onSaleSubmit={(order: any) => onSaleSubmit(order, false)} />}
       {activeTab === 'trading' && <TradingPanel state={state} onSaleSubmit={(order: any) => onSaleSubmit(order, true)} />}
+      {activeTab === 'expenses' && <ExpensePanel state={state} setState={setState} />}
       {activeTab === 'finance' && <FinancePanel state={state} />}
     </Layout>
   );

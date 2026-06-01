@@ -1,6 +1,6 @@
 
 import React, { ReactNode, useState } from 'react';
-import { Factory, Briefcase, BarChart3, Menu, X, Wheat, Download, Upload, Wallet, Building2, HardDrive, ArrowRightLeft, Monitor, Info, FileCode, FolderTree, Store } from 'lucide-react';
+import { Factory, Briefcase, BarChart3, Menu, X, Wheat, Download, Upload, Wallet, Building2, HardDrive, ArrowRightLeft, Monitor, Info, FileCode, FolderTree, Store, Users, Receipt } from 'lucide-react';
 
 interface LayoutProps {
   children: ReactNode;
@@ -14,9 +14,11 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab }) =>
 
   const navItems = [
     { id: 'dashboard', label: 'Dashboard & AI', icon: <BarChart3 className="w-5 h-5" /> },
+    { id: 'crm', label: 'CRM & Rekanan', icon: <Users className="w-5 h-5" /> },
     { id: 'production', label: 'PP BUMI MAS', icon: <Building2 className="w-5 h-5" /> }, 
     { id: 'direct_sales', label: 'Penjualan Langsung', icon: <Store className="w-5 h-5" /> },
     { id: 'trading', label: 'CV. Trading Makmur', icon: <Briefcase className="w-5 h-5" /> },
+    { id: 'expenses', label: 'Expense Tracker', icon: <Receipt className="w-5 h-5" /> },
     { id: 'finance', label: 'Jurnal Keuangan', icon: <Wallet className="w-5 h-5" /> },
   ];
 
