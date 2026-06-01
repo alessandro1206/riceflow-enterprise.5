@@ -1,25 +1,23 @@
 
-import React, { ReactNode, useRef, useState } from 'react';
+import React, { ReactNode, useState } from 'react';
 import { Factory, Briefcase, BarChart3, Menu, X, Wheat, Download, Upload, Wallet, Building2, HardDrive, ArrowRightLeft, Monitor, Info, FileCode, FolderTree, Store } from 'lucide-react';
 
 interface LayoutProps {
   children: ReactNode;
   activeTab: string;
   setActiveTab: (tab: string) => void;
-  onSaveData: () => void;
-  onLoadData: (file: File) => void;
 }
 
-const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, onSaveData, onLoadData }) => {
+const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showInstallCenter, setShowInstallCenter] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const navItems = [
     { id: 'dashboard', label: 'Dashboard & AI', icon: <BarChart3 className="w-5 h-5" /> },
     { id: 'production', label: 'PP BUMI MAS', icon: <Building2 className="w-5 h-5" /> }, 
     { id: 'direct_sales', label: 'Penjualan Langsung', icon: <Store className="w-5 h-5" /> },
     { id: 'trading', label: 'CV. Trading Makmur', icon: <Briefcase className="w-5 h-5" /> },
+    { id: 'finance', label: 'Jurnal Keuangan', icon: <Wallet className="w-5 h-5" /> },
   ];
 
   return (
@@ -68,22 +66,6 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, onSa
             </button>
           ))}
         </nav>
-
-        <div className="p-4 border-t border-emerald-800 bg-emerald-950/30">
-          <div className="flex items-center text-emerald-400 mb-3 px-1">
-             <ArrowRightLeft className="w-4 h-4 mr-2" />
-             <p className="text-xs font-bold uppercase tracking-wider">Data Sync</p>
-          </div>
-          <div className="space-y-2">
-            <button onClick={onSaveData} className="w-full flex items-center px-3 py-2 bg-emerald-800 hover:bg-emerald-700 rounded text-xs text-emerald-100 border border-emerald-700">
-              <Download className="w-4 h-4 mr-3 text-yellow-400" /> Backup Data
-            </button>
-            <button onClick={() => fileInputRef.current?.click()} className="w-full flex items-center px-3 py-2 bg-emerald-800 hover:bg-emerald-700 rounded text-xs text-emerald-100 border border-emerald-700">
-              <Upload className="w-4 h-4 mr-3 text-blue-400" /> Restore Data
-            </button>
-            <input type="file" ref={fileInputRef} onChange={(e) => e.target.files && onLoadData(e.target.files[0])} accept=".json" className="hidden" />
-          </div>
-        </div>
 
         <div className="p-4 bg-emerald-950 border-t border-emerald-800">
            <button 

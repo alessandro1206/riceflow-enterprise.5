@@ -1,10 +1,10 @@
-
 import React, { useState, useEffect } from 'react';
 import Layout from './components/Layout.tsx';
 import { Dashboard } from './components/Dashboard.tsx';
 import { ProductionPanel } from './components/ProductionPanel.tsx';
 import { TradingPanel } from './components/TradingPanel.tsx';
 import { DirectSalesPanel } from './components/DirectSalesPanel.tsx';
+import { FinancePanel } from './components/FinancePanel.tsx';
 import { BusinessState, JournalLine, JournalEntry } from './types.ts';
 
 const INITIAL_STATE: BusinessState = {
@@ -148,7 +148,7 @@ export default function App() {
   if (isLoading) return <div style={{ padding: '20px' }}>Menghubungkan ke Cloud Database...</div>;
 
   return (
-    <Layout activeTab={activeTab} setActiveTab={setActiveTab} onSaveData={() => {}} onLoadData={() => {}}>
+    <Layout activeTab={activeTab} setActiveTab={setActiveTab}>
       {activeTab === 'dashboard' && <Dashboard state={state} setActiveTab={setActiveTab} />}
       {activeTab === 'production' && (
         <ProductionPanel 
@@ -161,6 +161,7 @@ export default function App() {
       )}
       {activeTab === 'direct_sales' && <DirectSalesPanel state={state} onSaleSubmit={(order: any) => onSaleSubmit(order, false)} />}
       {activeTab === 'trading' && <TradingPanel state={state} onSaleSubmit={(order: any) => onSaleSubmit(order, true)} />}
+      {activeTab === 'finance' && <FinancePanel state={state} />}
     </Layout>
   );
 }
