@@ -111,3 +111,36 @@ def check_inventory_alerts():
         'success': True,
         'alerts': [item.to_dict() for item in alerts]
     })
+
+# ==========================================
+# OPENCLAW DASHBOARD ENDPOINTS
+# ==========================================
+@routes_bp.route('/api/logs/openclaw', methods=['GET'])
+@jwt_required()
+def get_openclaw_logs():
+    logs = OpenClawLog.query.order_by(OpenClawLog.timestamp.desc()).limit(50).all()
+    return jsonify({
+        'success': True,
+        'logs': [{
+            'id': log.id,
+            'timestamp': log.timestamp.isoformat(),
+            'action': log.action,
+            'details': log.details
+        } for log in logs]
+    })
+
+@routes_bp.route('/api/logs/openclaw', methods=['POST'])
+@require_api_key
+def add_openclaw_log():
+    data = request.json
+    if not data or not data.get('action'):
+        return jsonify({'success': False, 'error': 'Action is required'}), 400
+    
+    new_log = OpenClawLog(
+        action=data.get('action'),
+        details=data.get('details', '')
+    )
+    db.session.add(new_log)
+    db.session.commit()
+    
+    return jsonify({'success': True, 'log_id': new_log.id})

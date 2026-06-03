@@ -363,7 +363,10 @@ function createWindow() {
                     
                     fetch(PRODUCTION_API, {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            'X-API-KEY': 'default-dev-key' 
+                        },
                         body: JSON.stringify(payload)
                     })
                     .then(r => r.json())
