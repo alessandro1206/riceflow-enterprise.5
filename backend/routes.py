@@ -9,8 +9,9 @@ from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
 
 from extensions import db
-from models import SystemState, Inventory, ProductionBook, Journal, OpenClawLog
+from models import SystemState, Inventory, ProductionBook, Journal, OpenClawLog, Purchase, Sale, Expense, InventoryLog
 from auth import require_api_key
+import pandas as pd
 
 routes_bp = Blueprint('routes', __name__)
 
@@ -144,3 +145,148 @@ def add_openclaw_log():
     db.session.commit()
     
     return jsonify({'success': True, 'log_id': new_log.id})
+
+# ==========================================
+# PHASE 2: CORE FINANCIAL ERP ROUTES
+# ==========================================
+@routes_bp.route('/api/finance/purchases', methods=['GET', 'POST'])
+@jwt_required()
+def handle_purchases():
+    if request.method == 'POST':
+        data = request.json
+        purchase = Purchase(
+            supplier_name=data.get('supplier_name'),
+            item_name=data.get('item_name'),
+            qty_kg=data.get('qty_kg', 0),
+            price_per_kg=data.get('price_per_kg', 0),
+            dpp=data.get('dpp', 0),
+            ppn=data.get('ppn', 0),
+            total_amount=data.get('total_amount', 0),
+            payment_status=data.get('payment_status', 'DP'),
+            check_number=data.get('check_number', '')
+        )
+        db.session.add(purchase)
+        db.session.commit()
+        return jsonify({'success': True, 'purchase': purchase.to_dict()})
+    else:
+        purchases = Purchase.query.order_by(Purchase.date.desc()).all()
+        return jsonify([p.to_dict() for p in purchases])
+
+@routes_bp.route('/api/finance/sales', methods=['GET', 'POST'])
+@jwt_required()
+def handle_sales():
+    if request.method == 'POST':
+        data = request.json
+        sale = Sale(
+            customer_name=data.get('customer_name'),
+            brand_name=data.get('brand_name'),
+            qty_zak=data.get('qty_zak', 0),
+            kg_per_zak=data.get('kg_per_zak', 0),
+            total_kg=data.get('total_kg', 0),
+            price_per_kg=data.get('price_per_kg', 0),
+            dpp=data.get('dpp', 0),
+            ppn=data.get('ppn', 0),
+            total_amount=data.get('total_amount', 0)
+        )
+        db.session.add(sale)
+        db.session.commit()
+        return jsonify({'success': True, 'sale': sale.to_dict()})
+    else:
+        sales = Sale.query.order_by(Sale.date.desc()).all()
+        return jsonify([s.to_dict() for s in sales])
+
+@routes_bp.route('/api/finance/expenses', methods=['GET', 'POST'])
+@jwt_required()
+def handle_expenses():
+    if request.method == 'POST':
+        data = request.json
+        expense = Expense(
+            category=data.get('category'),
+            description=data.get('description'),
+            payment_type=data.get('payment_type'),
+            amount=data.get('amount', 0)
+        )
+        db.session.add(expense)
+        db.session.commit()
+        return jsonify({'success': True, 'expense': expense.to_dict()})
+    else:
+        expenses = Expense.query.order_by(Expense.date.desc()).all()
+        return jsonify([e.to_dict() for e in expenses])
+
+@routes_bp.route('/api/finance/export/laba-rugi', methods=['GET'])
+def export_laba_rugi():
+    # Gather data
+    sales = Sale.query.all()
+    purchases = Purchase.query.all()
+    expenses = Expense.query.all()
+
+    # Calculate fields for SAK/CoreTax
+    total_pendapatan = sum([s.total_amount for s in sales])
+
+    pembelian_beras = sum([p.total_amount for p in purchases if p.item_name and 'beras' in p.item_name.lower()])
+    pembelian_kemasan = sum([p.total_amount for p in purchases if p.item_name and ('kemasan' in p.item_name.lower() or 'zak' in p.item_name.lower())])
+    ongkos_kuli = sum([e.amount for e in expenses if e.category and 'kuli' in e.category.lower()])
+    ongkos_truk = sum([e.amount for e in expenses if e.category and 'truk' in e.category.lower()])
+    biaya_utilitas = sum([e.amount for e in expenses if e.category and ('pln' in e.category.lower() or 'pdam' in e.category.lower())])
+
+    total_hpp = pembelian_beras + pembelian_kemasan + ongkos_kuli + ongkos_truk + biaya_utilitas
+    laba_bruto = total_pendapatan - total_hpp
+
+    biaya_operasional = sum([e.amount for e in expenses if e.category and 'kuli' not in e.category.lower() and 'truk' not in e.category.lower() and 'pln' not in e.category.lower() and 'pdam' not in e.category.lower()])
+    laba_bersih = laba_bruto - biaya_operasional
+
+    data = {
+        'Kategori': [
+            'PENDAPATAN',
+            'Peredaran Bruto Usaha',
+            '',
+            'HARGA POKOK PENJUALAN (HPP)',
+            'Pembelian Beras',
+            'Pembelian Kemasan',
+            'Ongkos Kuli',
+            'Ongkos Truk',
+            'Biaya Utilitas (PLN/PDAM)',
+            'Total HPP',
+            '',
+            'LABA BRUTO USAHA',
+            '',
+            'BIAYA & ADMINISTRASI',
+            'Biaya Operasional Lainnya',
+            '',
+            'LABA BERSIH SEBELUM PAJAK'
+        ],
+        'Jumlah (Rp)': [
+            '',
+            total_pendapatan,
+            '',
+            '',
+            pembelian_beras,
+            pembelian_kemasan,
+            ongkos_kuli,
+            ongkos_truk,
+            biaya_utilitas,
+            total_hpp,
+            '',
+            laba_bruto,
+            '',
+            '',
+            biaya_operasional,
+            '',
+            laba_bersih
+        ]
+    }
+
+    df = pd.DataFrame(data)
+
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='Laba Rugi CoreTax')
+    
+    output.seek(0)
+    
+    return send_file(
+        output,
+        download_name='Laporan_Laba_Rugi_CoreTax.xlsx',
+        as_attachment=True,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )

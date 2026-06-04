@@ -98,5 +98,79 @@ class FactoryExpense(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     date = db.Column(db.DateTime, default=datetime.datetime.utcnow)
     category = db.Column(db.String(50)) # Wages, Electricity, Maintenance
-    amount = db.Column(db.Float, default=0.0)
     description = db.Column(db.String(255))
+
+# ==========================================
+# PHASE 2: CORE FINANCIAL ERP
+# ==========================================
+class Purchase(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    date = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    supplier_name = db.Column(db.String(100))
+    item_name = db.Column(db.String(100))
+    qty_kg = db.Column(db.Float, default=0.0)
+    price_per_kg = db.Column(db.Float, default=0.0)
+    dpp = db.Column(db.Float, default=0.0)
+    ppn = db.Column(db.Float, default=0.0)
+    total_amount = db.Column(db.Float, default=0.0)
+    payment_status = db.Column(db.String(50), default='DP') # DP/Lunas
+    check_number = db.Column(db.String(50))
+
+    def to_dict(self):
+        return {
+            'id': self.id, 'date': self.date.isoformat() if self.date else None, 'supplier_name': self.supplier_name,
+            'item_name': self.item_name, 'qty_kg': self.qty_kg, 'price_per_kg': self.price_per_kg,
+            'dpp': self.dpp, 'ppn': self.ppn, 'total_amount': self.total_amount,
+            'payment_status': self.payment_status, 'check_number': self.check_number
+        }
+
+class Sale(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    date = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    customer_name = db.Column(db.String(100))
+    brand_name = db.Column(db.String(100))
+    qty_zak = db.Column(db.Integer, default=0)
+    kg_per_zak = db.Column(db.Float, default=0.0)
+    total_kg = db.Column(db.Float, default=0.0)
+    price_per_kg = db.Column(db.Float, default=0.0)
+    dpp = db.Column(db.Float, default=0.0)
+    ppn = db.Column(db.Float, default=0.0)
+    total_amount = db.Column(db.Float, default=0.0)
+
+    def to_dict(self):
+        return {
+            'id': self.id, 'date': self.date.isoformat() if self.date else None, 'customer_name': self.customer_name,
+            'brand_name': self.brand_name, 'qty_zak': self.qty_zak, 'kg_per_zak': self.kg_per_zak,
+            'total_kg': self.total_kg, 'price_per_kg': self.price_per_kg, 'dpp': self.dpp,
+            'ppn': self.ppn, 'total_amount': self.total_amount
+        }
+
+class Expense(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    date = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    category = db.Column(db.String(100))
+    description = db.Column(db.String(255))
+    payment_type = db.Column(db.String(50)) # Cek/Tunai
+    amount = db.Column(db.Float, default=0.0)
+
+    def to_dict(self):
+        return {
+            'id': self.id, 'date': self.date.isoformat() if self.date else None, 'category': self.category,
+            'description': self.description, 'payment_type': self.payment_type, 'amount': self.amount
+        }
+
+class InventoryLog(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    date = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    raw_grain = db.Column(db.Float, default=0.0)
+    shrinkage = db.Column(db.Float, default=0.0)
+    beras_kepala = db.Column(db.Float, default=0.0)
+    menir = db.Column(db.Float, default=0.0)
+    packaging_sacks_usage = db.Column(db.Integer, default=0)
+
+    def to_dict(self):
+        return {
+            'id': self.id, 'date': self.date.isoformat() if self.date else None, 'raw_grain': self.raw_grain,
+            'shrinkage': self.shrinkage, 'beras_kepala': self.beras_kepala,
+            'menir': self.menir, 'packaging_sacks_usage': self.packaging_sacks_usage
+        }
