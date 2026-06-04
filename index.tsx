@@ -4,6 +4,8 @@ import { createRoot } from 'react-dom/client';
 import * as Lucide from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LineChart, Line } from 'recharts';
 
+const API_BASE = 'https://sabrent.pythonanywhere.com';
+
 // --- KONFIGURASI AKUNTANSI (CHART OF ACCOUNTS) ---
 const COA = [
   { code: '11001', name: 'Kas & Bank', type: 'ASSET' },
@@ -74,6 +76,15 @@ const Layout = ({ children, activeTab, setActiveTab }: any) => (
         <button onClick={() => setActiveTab('accounting')} className={`w-full flex items-center space-x-3 p-3 rounded-xl transition-all ${activeTab === 'accounting' ? 'bg-emerald-600 shadow-lg' : 'hover:bg-emerald-800/50 text-emerald-100'}`}>
           <Lucide.BookOpen className="w-5 h-5" />
           <span className="font-bold text-sm">Pusat Akuntansi</span>
+        </button>
+        <div className="pt-6 pb-2 px-3 text-[10px] font-black text-emerald-500 uppercase tracking-widest">Keuangan & AI</div>
+        <button onClick={() => setActiveTab('core_finance')} className={`w-full flex items-center space-x-3 p-3 rounded-xl transition-all ${activeTab === 'core_finance' ? 'bg-emerald-600 shadow-lg' : 'hover:bg-emerald-800/50 text-emerald-100'}`}>
+          <Lucide.Banknote className="w-5 h-5" />
+          <span className="font-bold text-sm">CoreTax Finance</span>
+        </button>
+        <button onClick={() => setActiveTab('openclaw')} className={`w-full flex items-center space-x-3 p-3 rounded-xl transition-all ${activeTab === 'openclaw' ? 'bg-emerald-600 shadow-lg' : 'hover:bg-emerald-800/50 text-emerald-100'}`}>
+          <Lucide.Terminal className="w-5 h-5" />
+          <span className="font-bold text-sm">AI Audit Log</span>
         </button>
       </nav>
       <div className="p-4 bg-emerald-950/50 border-t border-emerald-800 text-[10px] text-emerald-500 font-bold uppercase tracking-widest">
@@ -483,6 +494,163 @@ const AccountingPanel = ({ state }: any) => {
   );
 };
 
+// --- OPENCLAW AUDIT LOG ---
+const OpenClawPanel = () => {
+  const [logs, setLogs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const fetchLogs = async () => {
+    setLoading(true); setError('');
+    try {
+      const token = localStorage.getItem('jwt_token') || '';
+      const res = await fetch(`${API_BASE}/api/logs/openclaw`, { headers: { 'Authorization': `Bearer ${token}` } });
+      if (res.ok) { const d = await res.json(); setLogs(d.logs || []); }
+      else setError('Gagal memuat log. Pastikan Anda sudah login.');
+    } catch (e: any) { setError(e.message); }
+    finally { setLoading(false); }
+  };
+
+  useEffect(() => { fetchLogs(); const i = setInterval(fetchLogs, 30000); return () => clearInterval(i); }, []);
+
+  return (
+    <div className="space-y-6 animate-fade-in">
+      <div className="bg-slate-900 p-8 rounded-3xl flex justify-between items-center">
+        <div className="flex items-center gap-4">
+          <div className="p-3 bg-emerald-500/20 rounded-2xl"><Lucide.Activity className="w-8 h-8 text-emerald-400" /></div>
+          <div><h2 className="text-3xl font-black text-white">OpenClaw <span className="text-emerald-400">Audit Log</span></h2><p className="text-slate-400">Real-time monitoring of AI Orchestrator actions</p></div>
+        </div>
+        <button onClick={fetchLogs} disabled={loading} className="flex items-center gap-2 px-6 py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl transition-all disabled:opacity-50">
+          <Lucide.RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />{loading ? 'Memuat...' : 'Refresh Feed'}
+        </button>
+      </div>
+      {error && <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-xl text-red-400 font-medium">{error}</div>}
+      <div className="bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden">
+        <div className="p-6 border-b border-slate-800 flex items-center gap-2 text-slate-300 font-bold"><Lucide.Terminal className="w-5 h-5 text-emerald-400" /> System Execution Log</div>
+        <div className="divide-y divide-slate-800">
+          {logs.length === 0 && !loading && <div className="p-12 text-center text-slate-500">Belum ada log OpenClaw.</div>}
+          {logs.map(log => (
+            <div key={log.id} className="p-6 hover:bg-slate-800/50 flex flex-col md:flex-row gap-4 md:items-start group">
+              <span className="flex-shrink-0 inline-flex items-center px-3 py-1 bg-slate-800 text-slate-300 text-xs font-mono rounded-lg border border-slate-700">{new Date(log.timestamp).toLocaleString('id-ID')}</span>
+              <div><h3 className="text-lg font-bold text-white mb-1 group-hover:text-emerald-400 transition-colors">{log.action}</h3><p className="text-slate-400 text-sm font-mono whitespace-pre-wrap">{log.details || 'No additional details.'}</p></div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// --- CORETAX FINANCE ERP ---
+const CoreFinancePanel = () => {
+  const [tab, setTab] = useState<'laba_rugi' | 'pembelian' | 'penjualan' | 'biaya'>('laba_rugi');
+  const [purchases, setPurchases] = useState<any[]>([]);
+  const [sales, setSales] = useState<any[]>([]);
+  const [expenses, setExpenses] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      const h = { 'Authorization': `Bearer ${localStorage.getItem('jwt_token') || ''}` };
+      try {
+        const [pR, sR, eR] = await Promise.all([
+          fetch(`${API_BASE}/api/finance/purchases`, { headers: h }),
+          fetch(`${API_BASE}/api/finance/sales`, { headers: h }),
+          fetch(`${API_BASE}/api/finance/expenses`, { headers: h })
+        ]);
+        if (pR.ok) setPurchases(await pR.json());
+        if (sR.ok) setSales(await sR.json());
+        if (eR.ok) setExpenses(await eR.json());
+      } catch(e) { console.error(e); }
+      setLoading(false);
+    };
+    fetchData();
+  }, []);
+
+  const totalPendapatan = sales.reduce((a, s) => a + (s.total_amount || 0), 0);
+  const pembelianBeras = purchases.filter(p => p.item_name?.toLowerCase().includes('beras')).reduce((a, p) => a + (p.total_amount || 0), 0);
+  const pembelianKemasan = purchases.filter(p => p.item_name?.toLowerCase().includes('kemasan') || p.item_name?.toLowerCase().includes('zak')).reduce((a, p) => a + (p.total_amount || 0), 0);
+  const ongkosKuli = expenses.filter(e => e.category?.toLowerCase().includes('kuli')).reduce((a, e) => a + (e.amount || 0), 0);
+  const ongkosTruk = expenses.filter(e => e.category?.toLowerCase().includes('truk')).reduce((a, e) => a + (e.amount || 0), 0);
+  const biayaUtilitas = expenses.filter(e => e.category?.toLowerCase().includes('pln') || e.category?.toLowerCase().includes('pdam')).reduce((a, e) => a + (e.amount || 0), 0);
+  const totalHPP = pembelianBeras + pembelianKemasan + ongkosKuli + ongkosTruk + biayaUtilitas;
+  const labaBruto = totalPendapatan - totalHPP;
+  const biayaOps = expenses.filter(e => !e.category?.toLowerCase().includes('kuli') && !e.category?.toLowerCase().includes('truk') && !e.category?.toLowerCase().includes('pln') && !e.category?.toLowerCase().includes('pdam')).reduce((a, e) => a + (e.amount || 0), 0);
+  const labaBersih = labaBruto - biayaOps;
+
+  if (loading) return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div></div>;
+
+  return (
+    <div className="space-y-6 animate-fade-in">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div><h2 className="text-3xl font-black text-slate-800 flex items-center"><Lucide.BarChart3 className="w-8 h-8 mr-3 text-emerald-600" />CoreTax Finance ERP</h2><p className="text-slate-500 mt-1">Sistem Keuangan SAK & Pelaporan Pajak CoreTax</p></div>
+      </div>
+      <div className="flex gap-2 overflow-x-auto pb-2">
+        {([['laba_rugi','Laba Rugi (Live)'],['pembelian','Buku Pembelian'],['penjualan','Buku Penjualan'],['biaya','Buku Biaya']] as const).map(([id,label]) => (
+          <button key={id} onClick={() => setTab(id)} className={`px-6 py-3 rounded-2xl font-bold whitespace-nowrap transition-all ${tab === id ? 'bg-slate-900 text-white shadow-lg' : 'bg-white text-slate-500 hover:bg-slate-50 border border-slate-200'}`}>{label}</button>
+        ))}
+      </div>
+
+      {tab === 'laba_rugi' && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="bg-emerald-50 border border-emerald-100 rounded-3xl p-6"><h3 className="text-emerald-800 font-bold mb-2">Total Pendapatan</h3><p className="text-4xl font-black text-emerald-600">Rp {totalPendapatan.toLocaleString('id-ID')}</p></div>
+            <div className="bg-amber-50 border border-amber-100 rounded-3xl p-6"><h3 className="text-amber-800 font-bold mb-2">HPP</h3><p className="text-4xl font-black text-amber-600">Rp {totalHPP.toLocaleString('id-ID')}</p></div>
+            <div className="bg-blue-50 border border-blue-100 rounded-3xl p-6"><h3 className="text-blue-800 font-bold mb-2">Laba Bersih</h3><p className="text-4xl font-black text-blue-600">Rp {labaBersih.toLocaleString('id-ID')}</p></div>
+          </div>
+          <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
+            <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+              <h3 className="text-lg font-black text-slate-800 flex items-center"><Lucide.Calculator className="w-5 h-5 mr-2 text-slate-400" /> Rincian Laba Rugi (SAK)</h3>
+              <button onClick={() => window.open(`${API_BASE}/api/finance/export/laba-rugi`, '_blank')} className="flex items-center gap-2 bg-slate-900 text-white px-4 py-2 rounded-xl font-bold hover:bg-slate-800 transition-colors">
+                <Lucide.FileSpreadsheet className="w-4 h-4" /> Export CoreTax (.xlsx)
+              </button>
+            </div>
+            <div className="p-6">
+              <table className="w-full text-sm"><tbody>
+                <tr className="font-black text-slate-800 text-lg"><td className="py-3">PENDAPATAN</td><td /></tr>
+                <tr><td className="py-2 pl-4 text-slate-600">Peredaran Bruto Usaha</td><td className="text-right font-mono font-bold">{totalPendapatan.toLocaleString('id-ID')}</td></tr>
+                <tr className="font-black text-slate-800 text-lg"><td className="py-3 pt-6">HARGA POKOK PENJUALAN (HPP)</td><td /></tr>
+                <tr><td className="py-2 pl-4 text-slate-600">Pembelian Beras</td><td className="text-right font-mono">{pembelianBeras.toLocaleString('id-ID')}</td></tr>
+                <tr><td className="py-2 pl-4 text-slate-600">Pembelian Kemasan</td><td className="text-right font-mono">{pembelianKemasan.toLocaleString('id-ID')}</td></tr>
+                <tr><td className="py-2 pl-4 text-slate-600">Ongkos Kuli</td><td className="text-right font-mono">{ongkosKuli.toLocaleString('id-ID')}</td></tr>
+                <tr><td className="py-2 pl-4 text-slate-600">Ongkos Truk</td><td className="text-right font-mono">{ongkosTruk.toLocaleString('id-ID')}</td></tr>
+                <tr><td className="py-2 pl-4 text-slate-600 border-b border-slate-200">Biaya Utilitas (PLN/PDAM)</td><td className="text-right font-mono border-b border-slate-200">{biayaUtilitas.toLocaleString('id-ID')}</td></tr>
+                <tr className="bg-slate-50"><td className="py-3 pl-4 font-bold text-slate-800">Total HPP</td><td className="text-right font-mono font-bold text-amber-600">({totalHPP.toLocaleString('id-ID')})</td></tr>
+                <tr className="bg-emerald-50"><td className="py-4 font-black text-emerald-800 text-lg">LABA BRUTO USAHA</td><td className="text-right font-mono font-black text-emerald-600 text-lg">{labaBruto.toLocaleString('id-ID')}</td></tr>
+                <tr className="font-black text-slate-800 text-lg"><td className="py-3 pt-6">BIAYA & ADMINISTRASI</td><td /></tr>
+                <tr><td className="py-2 pl-4 text-slate-600 border-b border-slate-200">Biaya Operasional Lainnya</td><td className="text-right font-mono border-b border-slate-200">{biayaOps.toLocaleString('id-ID')}</td></tr>
+                <tr className="bg-blue-50"><td className="py-4 font-black text-blue-800 text-xl">LABA BERSIH SEBELUM PAJAK</td><td className="text-right font-mono font-black text-blue-600 text-xl">{labaBersih.toLocaleString('id-ID')}</td></tr>
+              </tbody></table>
+            </div>
+          </div>
+        </div>
+      )}
+      {tab === 'pembelian' && (
+        <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-x-auto">
+          <table className="w-full text-sm text-left"><thead className="bg-slate-50 text-slate-500 font-bold"><tr><th className="px-6 py-4">Tanggal</th><th className="px-6 py-4">Supplier</th><th className="px-6 py-4">Barang</th><th className="px-6 py-4">Qty KG</th><th className="px-6 py-4">Status</th><th className="px-6 py-4 text-right">Total (Rp)</th></tr></thead>
+          <tbody className="divide-y divide-slate-100">{purchases.map((p, i) => (<tr key={i} className="hover:bg-slate-50"><td className="px-6 py-4 text-slate-600">{new Date(p.date).toLocaleDateString('id-ID')}</td><td className="px-6 py-4 font-bold">{p.supplier_name}</td><td className="px-6 py-4">{p.item_name}</td><td className="px-6 py-4">{p.qty_kg?.toLocaleString('id-ID')}</td><td className="px-6 py-4"><span className={`px-2 py-1 rounded-lg text-xs font-bold ${p.payment_status === 'Lunas' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>{p.payment_status}</span></td><td className="px-6 py-4 text-right font-mono font-bold">{p.total_amount?.toLocaleString('id-ID')}</td></tr>))}</tbody>
+          </table>
+        </div>
+      )}
+      {tab === 'penjualan' && (
+        <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-x-auto">
+          <table className="w-full text-sm text-left"><thead className="bg-slate-50 text-slate-500 font-bold"><tr><th className="px-6 py-4">Tanggal</th><th className="px-6 py-4">Customer</th><th className="px-6 py-4">Brand</th><th className="px-6 py-4">Qty Zak</th><th className="px-6 py-4 text-right">Total (Rp)</th></tr></thead>
+          <tbody className="divide-y divide-slate-100">{sales.map((s, i) => (<tr key={i} className="hover:bg-slate-50"><td className="px-6 py-4 text-slate-600">{new Date(s.date).toLocaleDateString('id-ID')}</td><td className="px-6 py-4 font-bold">{s.customer_name}</td><td className="px-6 py-4">{s.brand_name}</td><td className="px-6 py-4">{s.qty_zak}</td><td className="px-6 py-4 text-right font-mono font-bold">{s.total_amount?.toLocaleString('id-ID')}</td></tr>))}</tbody>
+          </table>
+        </div>
+      )}
+      {tab === 'biaya' && (
+        <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-x-auto">
+          <table className="w-full text-sm text-left"><thead className="bg-slate-50 text-slate-500 font-bold"><tr><th className="px-6 py-4">Tanggal</th><th className="px-6 py-4">Kategori</th><th className="px-6 py-4">Keterangan</th><th className="px-6 py-4">Tipe Bayar</th><th className="px-6 py-4 text-right">Nominal (Rp)</th></tr></thead>
+          <tbody className="divide-y divide-slate-100">{expenses.map((e, i) => (<tr key={i} className="hover:bg-slate-50"><td className="px-6 py-4 text-slate-600">{new Date(e.date).toLocaleDateString('id-ID')}</td><td className="px-6 py-4"><span className="bg-slate-100 px-2 py-1 rounded-lg text-xs font-bold">{e.category}</span></td><td className="px-6 py-4">{e.description}</td><td className="px-6 py-4">{e.payment_type}</td><td className="px-6 py-4 text-right font-mono font-bold text-rose-600">{e.amount?.toLocaleString('id-ID')}</td></tr>))}</tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+};
+
 // --- MAIN APP ---
 function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -501,6 +669,8 @@ function App() {
       {activeTab === 'production' && <ProductionPanel state={state} setState={setState} />}
       {activeTab === 'trading' && <TradingPanel state={state} setState={setState} />}
       {activeTab === 'accounting' && <AccountingPanel state={state} />}
+      {activeTab === 'core_finance' && <CoreFinancePanel />}
+      {activeTab === 'openclaw' && <OpenClawPanel />}
     </Layout>
   );
 }
