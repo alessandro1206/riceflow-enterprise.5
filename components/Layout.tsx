@@ -1,6 +1,6 @@
 
 import React, { ReactNode, useState } from 'react';
-import { Factory, Briefcase, BarChart3, Menu, X, Wheat, Download, Upload, Wallet, Building2, HardDrive, ArrowRightLeft, Monitor, Info, FileCode, FolderTree, Store, Users, Receipt } from 'lucide-react';
+import { Factory, Briefcase, BarChart3, Menu, X, Wheat, Download, Upload, Wallet, Building2, HardDrive, ArrowRightLeft, Monitor, Info, FileCode, FolderTree, Store, Users, Receipt, Terminal, Banknote } from 'lucide-react';
 
 interface LayoutProps {
   children: ReactNode;
@@ -20,6 +20,8 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab }) =>
     { id: 'trading', label: 'CV. Trading Makmur', icon: <Briefcase className="w-5 h-5" /> },
     { id: 'expenses', label: 'Expense Tracker', icon: <Receipt className="w-5 h-5" /> },
     { id: 'finance', label: 'Jurnal Keuangan', icon: <Wallet className="w-5 h-5" /> },
+    { id: 'core_finance', label: 'CoreTax Finance', icon: <Banknote className="w-5 h-5" /> },
+    { id: 'openclaw', label: 'AI Audit Log', icon: <Terminal className="w-5 h-5" /> },
   ];
 
   return (

@@ -9,6 +9,8 @@ import { Login } from './components/Login.tsx';
 import { CRMPanel } from './components/CRMPanel.tsx';
 import { ExpensePanel } from './components/ExpensePanel.tsx';
 import { BusinessState, JournalLine, JournalEntry } from './types.ts';
+import { OpenClawDashboard } from './components/OpenClawDashboard.tsx';
+import { CoreFinancialDashboard } from './components/CoreFinancialDashboard.tsx';
 
 const INITIAL_STATE: BusinessState = {
   piles: [], inventory: [], masterSuppliers: [], masterCustomers: [], purchaseBook: [], productionBook: [], salesBook: [], directSalesBook: [], expenseBook: [], accounts: [], journal: []
@@ -96,6 +98,8 @@ export default function App() {
       {activeTab === 'trading' && <TradingPanel state={state} onSaleSubmit={(order: any) => onSaleSubmit(order, true)} />}
       {activeTab === 'expenses' && <ExpensePanel state={state} setState={setState} />}
       {activeTab === 'finance' && <FinancePanel state={state} />}
+      {activeTab === 'openclaw' && <OpenClawDashboard />}
+      {activeTab === 'core_finance' && <CoreFinancialDashboard />}
     </Layout>
   );
 }
