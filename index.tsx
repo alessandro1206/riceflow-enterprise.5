@@ -936,15 +936,15 @@ const CoreFinancePanel = () => {
     } catch(e) { console.error(e); }
   };
 
-  const totalPendapatan = sales.reduce((a, s) => a + (s.total_amount || 0), 0);
-  const pembelianBeras = purchases.filter(p => p.item_name?.toLowerCase().includes('beras')).reduce((a, p) => a + (p.total_amount || 0), 0);
-  const pembelianKemasan = purchases.filter(p => p.item_name?.toLowerCase().includes('kemasan') || p.item_name?.toLowerCase().includes('zak')).reduce((a, p) => a + (p.total_amount || 0), 0);
-  const ongkosKuli = expenses.filter(e => e.category?.toLowerCase().includes('kuli')).reduce((a, e) => a + (e.amount || 0), 0);
-  const ongkosTruk = expenses.filter(e => e.category?.toLowerCase().includes('truk')).reduce((a, e) => a + (e.amount || 0), 0);
-  const biayaUtilitas = expenses.filter(e => e.category?.toLowerCase().includes('pln') || e.category?.toLowerCase().includes('pdam')).reduce((a, e) => a + (e.amount || 0), 0);
+  const totalPendapatan = (sales || []).reduce((a, s) => a + (s.total_amount || 0), 0);
+  const pembelianBeras = (purchases || []).filter(p => (p.item_name || '').toLowerCase().includes('beras')).reduce((a, p) => a + (p.total_amount || 0), 0);
+  const pembelianKemasan = (purchases || []).filter(p => (p.item_name || '').toLowerCase().includes('kemasan') || (p.item_name || '').toLowerCase().includes('zak')).reduce((a, p) => a + (p.total_amount || 0), 0);
+  const ongkosKuli = (expenses || []).filter(e => (e.category || '').toLowerCase().includes('kuli')).reduce((a, e) => a + (e.amount || 0), 0);
+  const ongkosTruk = (expenses || []).filter(e => (e.category || '').toLowerCase().includes('truk')).reduce((a, e) => a + (e.amount || 0), 0);
+  const biayaUtilitas = (expenses || []).filter(e => (e.category || '').toLowerCase().includes('pln') || (e.category || '').toLowerCase().includes('pdam')).reduce((a, e) => a + (e.amount || 0), 0);
   const totalHPP = pembelianBeras + pembelianKemasan + ongkosKuli + ongkosTruk + biayaUtilitas;
   const labaBruto = totalPendapatan - totalHPP;
-  const biayaOps = expenses.filter(e => !e.category?.toLowerCase().includes('kuli') && !e.category?.toLowerCase().includes('truk') && !e.category?.toLowerCase().includes('pln') && !e.category?.toLowerCase().includes('pdam')).reduce((a, e) => a + (e.amount || 0), 0);
+  const biayaOps = (expenses || []).filter(e => !(e.category || '').toLowerCase().includes('kuli') && !(e.category || '').toLowerCase().includes('truk') && !(e.category || '').toLowerCase().includes('pln') && !(e.category || '').toLowerCase().includes('pdam')).reduce((a, e) => a + (e.amount || 0), 0);
   const labaBersih = labaBruto - biayaOps;
 
   if (loading) return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div></div>;
