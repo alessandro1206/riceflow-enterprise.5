@@ -458,13 +458,182 @@ const ProductionPanel = ({ state, setState }: any) => {
   );
 };
 
-// --- TRADING & AKUNTANSI (PENYEDERHANAAN UNTUK PREVIEW) ---
+// --- TRADING & SURAT JALAN ---
 const TradingPanel = ({ state, setState }: any) => {
+  const [formData, setFormData] = useState({ 
+    noSj: `SJ-${Date.now().toString().slice(-6)}`, 
+    customer: '', 
+    address: '', 
+    driver: '', 
+    platNo: '', 
+    items: [{ id: 1, name: 'Beras Premium 25kg', qty: 0, weight: 25 }] 
+  });
+
+  const handlePrint = () => {
+    window.print();
+  };
+
   return (
-    <div className="flex flex-col items-center justify-center h-full p-20 text-center space-y-4">
-        <Lucide.ShoppingCart className="w-16 h-16 text-indigo-200" />
-        <h3 className="text-xl font-bold text-slate-400 uppercase tracking-widest">Modul Trading Makmur</h3>
-        <p className="text-slate-400 max-w-md">Modul ini digunakan untuk penjualan stok beras ke distributor luar pulau.</p>
+    <div className="flex flex-col h-full bg-slate-50">
+      {/* HEADER */}
+      <div className="p-8 bg-white border-b flex justify-between items-center print:hidden">
+        <div>
+          <h2 className="text-3xl font-black text-slate-800 tracking-tight">Surat Jalan Generator</h2>
+          <p className="text-slate-500 font-bold mt-1">Buat dan cetak Surat Jalan pengiriman barang</p>
+        </div>
+        <button onClick={handlePrint} className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-4 rounded-2xl font-black shadow-xl shadow-indigo-200 transition-all flex items-center gap-2">
+          <Lucide.Printer className="w-5 h-5" /> CETAK PDF
+        </button>
+      </div>
+
+      <div className="flex-1 p-8 grid grid-cols-1 lg:grid-cols-2 gap-8 overflow-y-auto print:p-0 print:block">
+        {/* INPUT FORM */}
+        <div className="bg-white p-8 rounded-3xl shadow-sm border space-y-6 print:hidden">
+          <h3 className="font-black text-xl text-slate-800 border-b pb-4">Data Pengiriman</h3>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-2">No. Surat Jalan</label>
+              <input value={formData.noSj} onChange={e => setFormData({...formData, noSj: e.target.value})} className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl font-bold" />
+            </div>
+            <div>
+              <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-2">Tanggal</label>
+              <input value={new Date().toLocaleDateString('id-ID')} disabled className="w-full p-4 bg-slate-100 border border-slate-200 rounded-2xl font-bold text-slate-500" />
+            </div>
+            <div className="col-span-2">
+              <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-2">Tujuan / Pelanggan</label>
+              <input value={formData.customer} onChange={e => setFormData({...formData, customer: e.target.value})} placeholder="PT. Distributor Makmur" className="w-full p-4 border border-slate-200 rounded-2xl font-bold focus:ring-2 focus:ring-indigo-400" />
+            </div>
+            <div className="col-span-2">
+              <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-2">Alamat Pengiriman</label>
+              <input value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} placeholder="Jl. Raya Perdagangan No. 123" className="w-full p-4 border border-slate-200 rounded-2xl font-bold focus:ring-2 focus:ring-indigo-400" />
+            </div>
+            <div>
+              <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-2">Nama Supir</label>
+              <input value={formData.driver} onChange={e => setFormData({...formData, driver: e.target.value})} placeholder="Budi" className="w-full p-4 border border-slate-200 rounded-2xl font-bold focus:ring-2 focus:ring-indigo-400" />
+            </div>
+            <div>
+              <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-2">Plat Nomor Kendaraan</label>
+              <input value={formData.platNo} onChange={e => setFormData({...formData, platNo: e.target.value})} placeholder="B 1234 CD" className="w-full p-4 border border-slate-200 rounded-2xl font-bold focus:ring-2 focus:ring-indigo-400 uppercase" />
+            </div>
+          </div>
+
+          <h3 className="font-black text-xl text-slate-800 border-b pb-4 pt-4">Rincian Barang</h3>
+          {formData.items.map((item, index) => (
+            <div key={item.id} className="flex gap-4 items-center">
+              <div className="flex-1">
+                <input value={item.name} onChange={e => {
+                  const newItems = [...formData.items];
+                  newItems[index].name = e.target.value;
+                  setFormData({...formData, items: newItems});
+                }} className="w-full p-4 border border-slate-200 rounded-2xl font-bold" />
+              </div>
+              <div className="w-32">
+                <input type="number" placeholder="Qty" value={item.qty || ''} onChange={e => {
+                  const newItems = [...formData.items];
+                  newItems[index].qty = Number(e.target.value);
+                  setFormData({...formData, items: newItems});
+                }} className="w-full p-4 border border-slate-200 rounded-2xl font-bold text-center" />
+              </div>
+              <span className="font-black text-slate-400">Sak</span>
+            </div>
+          ))}
+        </div>
+
+        {/* PRINTABLE PREVIEW */}
+        <div className="bg-white p-12 rounded-none shadow-2xl border flex-col aspect-[1/1.414] mx-auto w-full max-w-3xl transform scale-100 origin-top print:shadow-none print:border-none print:p-0">
+          {/* KOP SURAT */}
+          <div className="flex justify-between items-center border-b-4 border-slate-800 pb-6 mb-6">
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center">
+                <Lucide.Wheat className="w-8 h-8 text-white" />
+              </div>
+              <div>
+                <h1 className="text-3xl font-black text-slate-800 tracking-tighter">BUMI MAS GROUP</h1>
+                <p className="text-sm font-bold text-slate-500">Pabrik Penggilingan Padi & Perdagangan Beras</p>
+                <p className="text-xs text-slate-400">Jl. Raya Pantura KM 12, Jawa Tengah | Telp: (021) 555-0123</p>
+              </div>
+            </div>
+            <div className="text-right">
+              <h2 className="text-4xl font-black text-indigo-600 tracking-tighter border-2 border-indigo-600 px-4 py-2 rounded-xl inline-block transform -rotate-2">SURAT JALAN</h2>
+            </div>
+          </div>
+
+          {/* META INFO */}
+          <div className="grid grid-cols-2 gap-8 mb-8">
+            <div>
+              <p className="text-xs font-black text-slate-400 uppercase mb-1">Kepada Yth:</p>
+              <p className="text-lg font-black text-slate-800">{formData.customer || '_______________________'}</p>
+              <p className="text-sm font-bold text-slate-600 mt-1">{formData.address || '_______________________'}</p>
+            </div>
+            <div className="bg-slate-50 p-4 rounded-xl border">
+              <div className="flex justify-between mb-2">
+                <span className="text-xs font-black text-slate-500 uppercase">No. Dokumen</span>
+                <span className="font-black text-slate-800">{formData.noSj}</span>
+              </div>
+              <div className="flex justify-between mb-2">
+                <span className="text-xs font-black text-slate-500 uppercase">Tanggal</span>
+                <span className="font-black text-slate-800">{new Date().toLocaleDateString('id-ID')}</span>
+              </div>
+              <div className="flex justify-between mb-2">
+                <span className="text-xs font-black text-slate-500 uppercase">Kendaraan</span>
+                <span className="font-black text-slate-800">{formData.platNo || '-'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-xs font-black text-slate-500 uppercase">Supir</span>
+                <span className="font-black text-slate-800">{formData.driver || '-'}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* TABLE */}
+          <table className="w-full mb-8">
+            <thead>
+              <tr className="bg-slate-800 text-white">
+                <th className="py-3 px-4 text-left font-black w-16">NO</th>
+                <th className="py-3 px-4 text-left font-black">NAMA BARANG</th>
+                <th className="py-3 px-4 text-center font-black w-32">QUANTITY</th>
+                <th className="py-3 px-4 text-center font-black w-32">SATUAN</th>
+              </tr>
+            </thead>
+            <tbody>
+              {formData.items.map((item, idx) => (
+                <tr key={idx} className="border-b-2 border-slate-100">
+                  <td className="py-4 px-4 font-bold text-slate-500">{idx + 1}</td>
+                  <td className="py-4 px-4 font-black text-slate-800 text-lg">{item.name}</td>
+                  <td className="py-4 px-4 font-black text-center text-xl text-indigo-600">{item.qty || 0}</td>
+                  <td className="py-4 px-4 font-bold text-center text-slate-500">Sak</td>
+                </tr>
+              ))}
+              <tr>
+                <td colSpan={2} className="py-4 px-4 font-black text-right text-slate-500 uppercase tracking-widest">Total Berat Muatan</td>
+                <td colSpan={2} className="py-4 px-4 font-black text-center text-xl bg-slate-50">
+                  {formData.items.reduce((acc, item) => acc + ((item.qty || 0) * item.weight), 0).toLocaleString()} kg
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+          {/* SIGNATURES */}
+          <div className="grid grid-cols-3 gap-4 mt-auto pt-16">
+            <div className="text-center">
+              <p className="text-xs font-bold text-slate-500 mb-20">Penerima / Pelanggan,</p>
+              <p className="font-black text-slate-800 border-b-2 border-slate-800 inline-block px-8">( {formData.customer || '                    '} )</p>
+            </div>
+            <div className="text-center">
+              <p className="text-xs font-bold text-slate-500 mb-20">Supir,</p>
+              <p className="font-black text-slate-800 border-b-2 border-slate-800 inline-block px-8">( {formData.driver || '                    '} )</p>
+            </div>
+            <div className="text-center">
+              <p className="text-xs font-bold text-slate-500 mb-20">Hormat Kami,</p>
+              <p className="font-black text-slate-800 border-b-2 border-slate-800 inline-block px-8">( Bag. Pengiriman )</p>
+            </div>
+          </div>
+          
+          <div className="mt-8 pt-4 border-t border-slate-200 text-center">
+            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Barang yang sudah dibeli tidak dapat ditukar atau dikembalikan tanpa perjanjian.</p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
