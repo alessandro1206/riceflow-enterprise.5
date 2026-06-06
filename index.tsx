@@ -1394,8 +1394,78 @@ const PaymentsPanel = () => {
   );
 };
 
+// --- LANDING PAGE ---
+const LandingPage = ({ onGetStarted }: { onGetStarted: () => void }) => {
+  return (
+    <div className="min-h-screen bg-[#f4f7f6] selection:bg-emerald-200 font-sans relative overflow-hidden">
+      {/* Decorative background blobs */}
+      <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-emerald-300/30 blur-[120px] rounded-full"></div>
+      <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-blue-300/20 blur-[120px] rounded-full"></div>
+      
+      {/* Navbar */}
+      <nav className="absolute top-0 w-full p-6 flex justify-between items-center z-50">
+        <div className="flex items-center space-x-3">
+          <div className="bg-gradient-to-br from-emerald-400 to-emerald-600 p-2.5 rounded-2xl shadow-lg shadow-emerald-200">
+            <Lucide.Wheat className="text-white w-7 h-7" />
+          </div>
+          <div>
+            <h1 className="font-black text-2xl tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-emerald-900 to-emerald-600">RiceFlow</h1>
+            <p className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.2em]">Enterprise</p>
+          </div>
+        </div>
+        <div>
+          <button onClick={onGetStarted} className="px-6 py-3 bg-white/80 backdrop-blur-md text-emerald-700 font-bold rounded-2xl shadow-sm border border-emerald-100 hover:bg-emerald-50 transition-all">
+            Login
+          </button>
+        </div>
+      </nav>
+
+      {/* Hero Section */}
+      <main className="relative z-10 flex flex-col items-center justify-center min-h-screen px-4 text-center">
+        <div className="inline-flex items-center space-x-2 bg-white/60 backdrop-blur-md px-4 py-2 rounded-full border border-slate-200 shadow-sm mb-8 animate-fade-up">
+          <span className="flex h-2 w-2 rounded-full bg-emerald-500"></span>
+          <span className="text-xs font-bold text-slate-600 tracking-wide">Sistem ERP Pertanian Modern</span>
+        </div>
+        
+        <h2 className="text-5xl md:text-7xl font-black text-slate-800 tracking-tighter max-w-4xl leading-[1.1] animate-fade-up stagger-1">
+          Otomatisasi Pabrik Beras <br />
+          <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-500 to-teal-400">Didukung AI.</span>
+        </h2>
+        
+        <p className="mt-6 text-lg md:text-xl text-slate-500 font-medium max-w-2xl animate-fade-up stagger-2">
+          Platform manajemen komprehensif untuk penggilingan padi, persediaan gabah, keuangan CoreTax, dan prediksi rendemen otomatis.
+        </p>
+
+        <div className="mt-10 flex flex-col sm:flex-row items-center gap-4 animate-fade-up stagger-3">
+          <button onClick={onGetStarted} className="px-8 py-4 bg-slate-900 hover:bg-emerald-600 text-white font-black rounded-2xl shadow-2xl hover:shadow-emerald-500/30 transition-all flex items-center gap-2 transform hover:scale-105 active:scale-95">
+            Mulai Sekarang <Lucide.ArrowRight className="w-5 h-5" />
+          </button>
+          <a href="#features" className="px-8 py-4 bg-white/50 backdrop-blur-md text-slate-700 hover:bg-white/80 border border-slate-200 font-bold rounded-2xl transition-all">
+            Pelajari Fitur
+          </a>
+        </div>
+        
+        {/* Mockup Preview */}
+        <div className="mt-16 w-full max-w-5xl rounded-t-[2.5rem] bg-white/40 backdrop-blur-xl border-t border-l border-r border-white/60 shadow-2xl p-4 md:p-8 animate-fade-up stagger-3">
+          <div className="w-full h-64 md:h-96 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-50 border border-slate-200 shadow-inner flex items-center justify-center overflow-hidden relative">
+            <div className="absolute top-0 left-0 w-full h-12 bg-white border-b flex items-center px-4 space-x-2">
+               <div className="w-3 h-3 rounded-full bg-red-400"></div>
+               <div className="w-3 h-3 rounded-full bg-amber-400"></div>
+               <div className="w-3 h-3 rounded-full bg-emerald-400"></div>
+            </div>
+            <div className="text-slate-300 flex flex-col items-center">
+              <Lucide.BarChart3 className="w-16 h-16 mb-4" />
+              <p className="font-bold">Enterprise Dashboard Preview</p>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+};
+
 // --- LOGIN SCREEN ---
-const LoginScreen = ({ onLogin }: { onLogin: (token: string) => void }) => {
+const LoginScreen = ({ onLogin, onBack }: { onLogin: (token: string) => void, onBack: () => void }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -1422,31 +1492,54 @@ const LoginScreen = ({ onLogin }: { onLogin: (token: string) => void }) => {
   };
 
   return (
-    <div className="min-h-screen bg-emerald-950 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-emerald-600 rounded-3xl mb-4">
-            <Lucide.Wheat className="w-9 h-9 text-yellow-400" />
-          </div>
-          <h1 className="text-4xl font-black text-white tracking-tight">RiceFlow</h1>
-          <p className="text-emerald-400 font-bold uppercase tracking-widest text-xs mt-1">Bumi Mas Group — Enterprise ERP</p>
-        </div>
-        <div className="bg-white rounded-3xl p-8 shadow-2xl space-y-4">
-          <h2 className="text-xl font-black text-slate-800 mb-2">Masuk ke Sistem</h2>
-          {error && <div className="bg-red-50 border border-red-200 text-red-600 text-sm font-bold p-3 rounded-xl">{error}</div>}
-          <div>
-            <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-1">Username</label>
-            <input value={username} onChange={e => setUsername(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleLogin()} placeholder="admin" className="w-full p-4 border border-slate-200 rounded-2xl font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-400" />
-          </div>
-          <div>
-            <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-1">Password</label>
-            <input type="password" value={password} onChange={e => setPassword(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleLogin()} placeholder="••••••••" className="w-full p-4 border border-slate-200 rounded-2xl font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-400" />
-          </div>
-          <button onClick={handleLogin} disabled={loading} className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-2xl transition-colors flex items-center justify-center gap-2 disabled:opacity-60">
-            {loading ? <Lucide.Loader2 className="w-5 h-5 animate-spin" /> : <Lucide.LogIn className="w-5 h-5" />}
-            {loading ? 'Memuat...' : 'Masuk'}
+    <div className="min-h-screen bg-[#f4f7f6] flex items-center justify-center p-4 lg:p-8 font-sans selection:bg-emerald-200">
+      <div className="w-full max-w-5xl bg-white/80 backdrop-blur-xl rounded-[2.5rem] shadow-2xl border border-white/60 overflow-hidden flex flex-col md:flex-row">
+        
+        {/* Branding Sidebar */}
+        <div className="md:w-5/12 bg-slate-900 p-10 flex flex-col relative overflow-hidden text-white">
+          <div className="absolute inset-0 bg-gradient-to-br from-emerald-600/20 to-transparent"></div>
+          <button onClick={onBack} className="relative z-10 w-fit p-2 bg-white/10 hover:bg-white/20 rounded-xl transition-colors mb-12">
+            <Lucide.ArrowLeft className="w-5 h-5" />
           </button>
+          
+          <div className="relative z-10 mt-auto">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-emerald-500 rounded-2xl mb-6 shadow-lg shadow-emerald-500/30">
+              <Lucide.Wheat className="w-8 h-8 text-white" />
+            </div>
+            <h1 className="text-4xl font-black tracking-tight mb-2">RiceFlow.</h1>
+            <p className="text-slate-400 font-medium">Bumi Mas Group Core ERP System.</p>
+          </div>
+          
+          {/* Decorative shapes */}
+          <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-emerald-500/20 rounded-full blur-3xl"></div>
         </div>
+
+        {/* Login Form */}
+        <div className="md:w-7/12 p-8 md:p-16 flex flex-col justify-center">
+          <h2 className="text-3xl font-black text-slate-800 tracking-tight mb-2">Selamat Datang Kembali</h2>
+          <p className="text-slate-500 font-medium mb-8">Masuk ke akun Anda untuk mengelola operasional.</p>
+          
+          {error && <div className="bg-red-50 border border-red-100 text-red-600 text-sm font-bold p-4 rounded-2xl mb-6 flex items-center gap-2"><Lucide.AlertCircle className="w-5 h-5"/> {error}</div>}
+          
+          <div className="space-y-6">
+            <div>
+              <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-2">Username</label>
+              <input value={username} onChange={e => setUsername(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleLogin()} placeholder="admin" className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:bg-white transition-all" />
+            </div>
+            <div>
+              <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-2 flex justify-between">
+                <span>Password</span>
+                <a href="#" className="text-emerald-600 hover:text-emerald-700 normal-case tracking-normal">Lupa password?</a>
+              </label>
+              <input type="password" value={password} onChange={e => setPassword(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleLogin()} placeholder="••••••••" className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:bg-white transition-all" />
+            </div>
+            <button onClick={handleLogin} disabled={loading} className="w-full py-4 bg-slate-900 hover:bg-emerald-600 text-white font-black rounded-2xl shadow-xl hover:shadow-emerald-500/30 transition-all flex items-center justify-center gap-2 disabled:opacity-60 transform active:scale-95">
+              {loading ? <Lucide.Loader2 className="w-5 h-5 animate-spin" /> : <Lucide.LogIn className="w-5 h-5" />}
+              {loading ? 'Memverifikasi...' : 'Masuk ke Sistem'}
+            </button>
+          </div>
+        </div>
+
       </div>
     </div>
   );
@@ -1455,6 +1548,7 @@ const LoginScreen = ({ onLogin }: { onLogin: (token: string) => void }) => {
 // --- MAIN APP ---
 function App() {
   const [token, setToken] = useState<string | null>(localStorage.getItem('jwt_token'));
+  const [view, setView] = useState<'landing' | 'login' | 'app'>(token ? 'app' : 'landing');
   const [activeTab, setActiveTab] = useState('dashboard');
   const [state, setState] = useState(() => {
     const saved = localStorage.getItem('riceflow_v10');
@@ -1465,13 +1559,25 @@ function App() {
     localStorage.setItem('riceflow_v10', JSON.stringify(state)); 
   }, [state]);
 
-  if (!token) return <LoginScreen onLogin={t => setToken(t)} />;
+  const handleLoginSuccess = (t: string) => {
+    setToken(t);
+    setView('app');
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('jwt_token');
+    setToken(null);
+    setView('landing');
+  };
+
+  if (view === 'landing') return <LandingPage onGetStarted={() => setView('login')} />;
+  if (view === 'login') return <LoginScreen onLogin={handleLoginSuccess} onBack={() => setView('landing')} />;
 
   return (
     <Layout activeTab={activeTab} setActiveTab={setActiveTab}>
       <div className="absolute top-4 right-4 z-50">
-        <button onClick={() => { localStorage.removeItem('jwt_token'); setToken(null); }} className="bg-red-100 text-red-600 px-4 py-2 rounded-xl text-sm font-bold hover:bg-red-200 flex items-center gap-2">
-          <Lucide.LogOut className="w-4 h-4" /> Logout
+        <button onClick={handleLogout} className="bg-red-100 text-red-600 px-4 py-2 rounded-xl text-sm font-bold hover:bg-red-200 flex items-center gap-2 shadow-sm transition-colors">
+          <Lucide.LogOut className="w-4 h-4" /> Keluar
         </button>
       </div>
       {activeTab === 'dashboard' && <Dashboard state={state} />}
