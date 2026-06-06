@@ -468,7 +468,7 @@ const TradingPanel = ({ state, setState }: any) => {
     handler: '',
     driver: '', 
     platNo: '', 
-    items: [{ id: 1, name: 'Beras Premium 25kg', qty: 0, weight: 25 }] 
+    items: [{ id: 1, name: 'Beras Premium', qty: 0, unit: 'Sak', weight: 25 }] 
   });
 
   const handlePrint = () => {
@@ -544,7 +544,17 @@ const TradingPanel = ({ state, setState }: any) => {
                   setFormData({...formData, items: newItems});
                 }} className="w-full p-4 border border-slate-200 rounded-2xl font-bold text-center" />
               </div>
-              <span className="font-black text-slate-400">Sak</span>
+              <div className="w-24">
+                <select value={item.unit} onChange={e => {
+                  const newItems = [...formData.items];
+                  newItems[index].unit = e.target.value;
+                  setFormData({...formData, items: newItems});
+                }} className="w-full p-4 border border-slate-200 rounded-2xl font-bold bg-slate-50">
+                  <option value="Sak">Sak</option>
+                  <option value="Ton">Ton</option>
+                  <option value="Kg">Kg</option>
+                </select>
+              </div>
             </div>
           ))}
         </div>
@@ -619,13 +629,13 @@ const TradingPanel = ({ state, setState }: any) => {
                   <td className="py-4 px-4 font-bold text-slate-500">{idx + 1}</td>
                   <td className="py-4 px-4 font-black text-slate-800 text-lg">{item.name}</td>
                   <td className="py-4 px-4 font-black text-center text-xl text-indigo-600">{item.qty || 0}</td>
-                  <td className="py-4 px-4 font-bold text-center text-slate-500">Sak</td>
+                  <td className="py-4 px-4 font-bold text-center text-slate-500">{item.unit}</td>
                 </tr>
               ))}
               <tr>
-                <td colSpan={2} className="py-4 px-4 font-black text-right text-slate-500 uppercase tracking-widest">Total Berat Muatan</td>
+                <td colSpan={2} className="py-4 px-4 font-black text-right text-slate-500 uppercase tracking-widest">Total Muatan</td>
                 <td colSpan={2} className="py-4 px-4 font-black text-center text-xl bg-slate-50">
-                  {formData.items.reduce((acc, item) => acc + ((item.qty || 0) * item.weight), 0).toLocaleString()} kg
+                  {formData.items.map(i => `${i.qty || 0} ${i.unit}`).join(' + ')}
                 </td>
               </tr>
             </tbody>
