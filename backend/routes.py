@@ -19,7 +19,7 @@ except FileNotFoundError:
     pass
 
 from extensions import db
-from models import SystemState, Inventory, ProductionBook, Journal, OpenClawLog, Purchase, Sale, Expense, InventoryLog
+from models import SystemState, Inventory, ProductionBook, Journal, AILog, Purchase, Sale, Expense, InventoryLog
 from auth import require_api_key
 import pandas as pd
 
@@ -94,81 +94,89 @@ def save_state():
     return jsonify({'success': True})
 
 # ==========================================
-# WEBHOOK & ORCHESTRATION ENDPOINTS (For OpenClaw - Protected by API KEY)
+# WEIGHBRIDGE AI AUTOMATION (Gemini Powered)
 # ==========================================
 @routes_bp.route('/api/webhooks/weighbridge', methods=['POST'])
 @require_api_key
 def weighbridge_webhook():
     data = request.json
-    openclaw_url = os.environ.get('OPENCLAW_WEBHOOK_URL')
+    api_key = os.environ.get('GEMINI_API_KEY')
     
-    # Log the webhook event
-    log = OpenClawLog(action="Weighbridge Webhook Received", details=json.dumps(data))
-    db.session.add(log)
-    db.session.commit()
+    if not api_key:
+        log = AILog(action="Weighbridge Error", details="Gemini API Key missing.")
+        db.session.add(log)
+        db.session.commit()
+        return jsonify({'success': False, 'error': 'API Key not configured'}), 500
 
-    if not openclaw_url:
-        return jsonify({'success': False, 'error': 'Webhook URL not configured'}), 500
+    # Ask Gemini to parse the webhook
+    prompt = f"""You are the RiceFlow Automated Parsing AI. 
+A truck has just weighed in. Payload: {json.dumps(data)}
+
+Determine if this is a Purchase of Gabah from a Supplier, or a Sale of Beras to a Customer.
+Return a pure JSON object (no markdown, no backticks) with:
+{{
+  "transaction_type": "Purchase" or "Sale",
+  "party_name": "Name of supplier or customer",
+  "item_name": "Gabah" or "Beras Premium",
+  "net_weight_kg": 1234,
+  "estimated_price_per_kg": 7000
+}}
+"""
+
+    gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={api_key}"
+    payload = {"contents": [{"parts": [{"text": prompt}]}]}
+
     try:
-        requests.post(openclaw_url, json=data, timeout=5)
-    except requests.exceptions.RequestException as e:
-        return jsonify({'success': True, 'openclaw_forwarding_error': str(e)}), 200
-    return jsonify({'success': True, 'message': 'Payload forwarded'})
+        response = requests.post(gemini_url, json=payload, headers={'Content-Type': 'application/json'}, timeout=15)
+        if response.status_code == 200:
+            ai_text = response.json()['candidates'][0]['content']['parts'][0]['text']
+            cleaned = ai_text.strip().removeprefix('```json').removesuffix('```').strip()
+            parsed = json.loads(cleaned)
+            
+            # Save to Database
+            if parsed.get('transaction_type') == 'Purchase':
+                total = parsed.get('net_weight_kg', 0) * parsed.get('estimated_price_per_kg', 0)
+                record = Purchase(
+                    supplier_name=parsed.get('party_name', 'Unknown'),
+                    item_name=parsed.get('item_name', 'Gabah'),
+                    qty_kg=parsed.get('net_weight_kg', 0),
+                    price_per_kg=parsed.get('estimated_price_per_kg', 0),
+                    total_amount=total,
+                    payment_status='DP'
+                )
+                db.session.add(record)
+                db.session.commit()
+                log = AILog(action="Automated Purchase Saved", details=f"Supplier: {record.supplier_name}, Qty: {record.qty_kg}kg, Total: Rp{total}")
+                
+            elif parsed.get('transaction_type') == 'Sale':
+                total = parsed.get('net_weight_kg', 0) * parsed.get('estimated_price_per_kg', 0)
+                record = Sale(
+                    customer_name=parsed.get('party_name', 'Unknown'),
+                    brand_name=parsed.get('item_name', 'Beras Premium'),
+                    total_kg=parsed.get('net_weight_kg', 0),
+                    price_per_kg=parsed.get('estimated_price_per_kg', 0),
+                    total_amount=total,
+                    payment_status='DP'
+                )
+                db.session.add(record)
+                db.session.commit()
+                log = AILog(action="Automated Sale Saved", details=f"Customer: {record.customer_name}, Qty: {record.total_kg}kg, Total: Rp{total}")
+            
+            db.session.add(log)
+            db.session.commit()
+            return jsonify({'success': True, 'action_taken': log.action, 'details': log.details})
+            
+        else:
+            log = AILog(action="Gemini API Error", details=str(response.text))
+            db.session.add(log)
+            db.session.commit()
+            return jsonify({'success': False, 'error': 'Gemini Failed'}), 500
 
-@routes_bp.route('/api/reports/end-of-day', methods=['GET'])
-@require_api_key
-def get_end_of_day_report():
-    today = datetime.datetime.utcnow().strftime('%Y-%m-%d')
-    productions = ProductionBook.query.filter_by(date=today).all()
-    journals = Journal.query.filter_by(date=today).all()
-    return jsonify({
-        'success': True,
-        'date': today,
-        'production_records': [p.to_dict() for p in productions],
-        'journal_entries': [j.to_dict() for j in journals]
-    })
-
-@routes_bp.route('/api/inventory/alerts', methods=['GET'])
-@require_api_key
-def check_inventory_alerts():
-    alerts = Inventory.query.filter(Inventory.quantity < Inventory.minimum_threshold).all()
-    return jsonify({
-        'success': True,
-        'alerts': [item.to_dict() for item in alerts]
-    })
-
-# ==========================================
-# OPENCLAW DASHBOARD ENDPOINTS
-# ==========================================
-@routes_bp.route('/api/logs/openclaw', methods=['GET'])
-@jwt_required()
-def get_openclaw_logs():
-    logs = OpenClawLog.query.order_by(OpenClawLog.timestamp.desc()).limit(50).all()
-    return jsonify({
-        'success': True,
-        'logs': [{
-            'id': log.id,
-            'timestamp': log.timestamp.isoformat(),
-            'action': log.action,
-            'details': log.details
-        } for log in logs]
-    })
-
-@routes_bp.route('/api/logs/openclaw', methods=['POST'])
-@require_api_key
-def add_openclaw_log():
-    data = request.json
-    if not data or not data.get('action'):
-        return jsonify({'success': False, 'error': 'Action is required'}), 400
-    
-    new_log = OpenClawLog(
-        action=data.get('action'),
-        details=data.get('details', '')
-    )
-    db.session.add(new_log)
-    db.session.commit()
-    
-    return jsonify({'success': True, 'log_id': new_log.id})
+    except Exception as e:
+        log = AILog(action="System Error", details=str(e))
+        db.session.add(log)
+        db.session.commit()
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 # ==========================================
 # PHASE 2: CORE FINANCIAL ERP ROUTES
@@ -329,8 +337,8 @@ def mark_purchase_paid(id):
     purchase.payment_status = 'Lunas'
     purchase.paid_at = datetime.datetime.utcnow()
     db.session.commit()
-    # Log to OpenClaw
-    log = OpenClawLog(action="Payment Marked as Lunas", details=f"Supplier: {purchase.supplier_name} | Amount: {purchase.total_amount} | Check: {purchase.check_number}")
+    # Log to AI Log
+    log = AILog(action="Payment Marked as Lunas", details=f"Supplier: {purchase.supplier_name} | Amount: {purchase.total_amount} | Check: {purchase.check_number}")
     db.session.add(log)
     db.session.commit()
     return jsonify({'success': True, 'purchase': purchase.to_dict()})
@@ -432,7 +440,7 @@ def ask_ai():
         resp_data = response.json()
         if response.status_code == 200:
             ai_text = resp_data['candidates'][0]['content']['parts'][0]['text']
-            db.session.add(OpenClawLog(action="Ask RiceFlow AI", details=f"Q: {user_query} | A: {ai_text[:50]}..."))
+            db.session.add(AILog(action="Ask RiceFlow AI", details=f"Q: {user_query} | A: {ai_text[:50]}..."))
             db.session.commit()
             return jsonify({'success': True, 'answer': ai_text})
         else:
