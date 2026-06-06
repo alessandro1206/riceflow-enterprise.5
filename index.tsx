@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 import * as Lucide from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LineChart, Line } from 'recharts';
+import TradingCalendar from './components/TradingCalendar';
 
 const API_BASE = 'https://sabrent.pythonanywhere.com';
 
@@ -490,8 +491,8 @@ const TradingPanel = ({ state, setState }: any) => {
       {/* HEADER */}
       <div className="p-8 bg-white border-b flex justify-between items-center print:hidden">
         <div>
-          <h2 className="text-3xl font-black text-slate-800 tracking-tight">Surat Jalan Generator</h2>
-          <p className="text-slate-500 font-bold mt-1">Buat dan cetak Surat Jalan pengiriman barang</p>
+          <h2 className="text-3xl font-black text-slate-800 tracking-tight">Trading & Logistik</h2>
+          <p className="text-slate-500 font-bold mt-1">Jadwal armada dan pembuatan Surat Jalan pengiriman barang</p>
         </div>
         <button onClick={handlePrint} className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-4 rounded-2xl font-black shadow-xl shadow-indigo-200 transition-all flex items-center gap-2">
           <Lucide.Printer className="w-5 h-5" /> CETAK PDF
@@ -499,6 +500,11 @@ const TradingPanel = ({ state, setState }: any) => {
       </div>
 
       <div className="flex-1 p-8 grid grid-cols-1 lg:grid-cols-2 gap-8 overflow-y-auto print:p-0 print:block">
+        {/* LOGISTICS CALENDAR */}
+        <div className="lg:col-span-2 print:hidden mb-4">
+           <TradingCalendar />
+        </div>
+
         {/* INPUT FORM */}
         <div className="bg-white p-8 rounded-3xl shadow-sm border space-y-6 print:hidden">
           <h3 className="font-black text-xl text-slate-800 border-b pb-4">Data Pengiriman</h3>
