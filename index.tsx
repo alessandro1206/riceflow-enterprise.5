@@ -4,6 +4,7 @@ import { createRoot } from 'react-dom/client';
 import * as Lucide from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LineChart, Line } from 'recharts';
 import TradingCalendar from './components/TradingCalendar';
+import ReportPanel from './components/ReportPanel';
 
 const API_BASE = 'https://sabrent.pythonanywhere.com';
 
@@ -49,66 +50,101 @@ const INITIAL_STATE = {
 
 const fCurrency = (num: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(num);
 
+// --- ROLE CONFIG ---
+type UserRole = 'admin' | 'manager' | 'operator' | 'kasir';
+const ROLE_LABELS: Record<UserRole, string> = { admin: 'Administrator', manager: 'Manajer', operator: 'Operator', kasir: 'Kasir' };
+const ROLE_COLORS: Record<UserRole, string> = { admin: 'text-rose-500', manager: 'text-blue-500', operator: 'text-emerald-500', kasir: 'text-amber-500' };
+
+interface NavItem {
+  id: string;
+  label: string;
+  icon: React.ReactNode;
+  roles: UserRole[];
+  special?: boolean;
+}
+
+const NAV_ITEMS: { section: string; items: NavItem[] }[] = [
+  { section: '', items: [
+    { id: 'dashboard', label: 'Dashboard', icon: <Lucide.LayoutDashboard className="w-5 h-5" />, roles: ['admin','manager','operator','kasir'] },
+  ]},
+  { section: 'Operasional', items: [
+    { id: 'production', label: 'PP BUMI MAS', icon: <Lucide.Building2 className="w-5 h-5" />, roles: ['admin','manager','operator'] },
+    { id: 'trading', label: 'Trading & Logistik', icon: <Lucide.ShoppingCart className="w-5 h-5" />, roles: ['admin','manager','kasir'] },
+    { id: 'accounting', label: 'Pusat Akuntansi', icon: <Lucide.BookOpen className="w-5 h-5" />, roles: ['admin','manager'] },
+  ]},
+  { section: 'Keuangan & AI', items: [
+    { id: 'core_finance', label: 'CoreTax Finance', icon: <Lucide.Banknote className="w-5 h-5" />, roles: ['admin','manager','kasir'] },
+    { id: 'ask-riceflow', label: 'Ask RiceFlow AI', icon: <Lucide.Bot className="w-5 h-5" />, roles: ['admin','manager','operator','kasir'], special: true },
+    { id: 'reports', label: 'Laporan Keuangan', icon: <Lucide.FileText className="w-5 h-5" />, roles: ['admin','manager'] },
+    { id: 'payments', label: 'Tagihan & Reorder', icon: <Lucide.AlarmClock className="w-5 h-5" />, roles: ['admin','manager','kasir'] },
+  ]},
+];
+
 // --- LAYOUT ---
-const Layout = ({ children, activeTab, setActiveTab }: any) => (
-  <div className="min-h-screen bg-[#f4f7f6] flex flex-col md:flex-row font-sans selection:bg-emerald-200">
-    <aside className="w-full md:w-72 bg-white/80 backdrop-blur-xl border-r border-slate-200 text-slate-800 flex flex-col z-50 soft-shadow">
-      <div className="p-8 flex items-center space-x-4 border-b border-slate-100">
-        <div className="bg-gradient-to-br from-emerald-400 to-emerald-600 p-2.5 rounded-2xl shadow-lg shadow-emerald-200">
+const Layout = ({ children, activeTab, setActiveTab, darkMode, setDarkMode, userRole, username }: any) => {
+  const role: UserRole = userRole || 'admin';
+  return (
+  <div className={`min-h-screen flex flex-col md:flex-row font-sans selection:bg-emerald-200 transition-colors duration-300 ${darkMode ? 'bg-slate-900 text-slate-200' : 'bg-[#f4f7f6] text-slate-800'}`}>
+    <aside className={`w-full md:w-72 backdrop-blur-xl border-r flex flex-col z-50 soft-shadow transition-colors duration-300 ${darkMode ? 'bg-slate-800/90 border-slate-700' : 'bg-white/80 border-slate-200'}`}>
+      <div className={`p-8 flex items-center space-x-4 border-b ${darkMode ? 'border-slate-700' : 'border-slate-100'}`}>
+        <div className="bg-gradient-to-br from-emerald-400 to-emerald-600 p-2.5 rounded-2xl shadow-lg shadow-emerald-200/30">
           <Lucide.Wheat className="text-white w-7 h-7" />
         </div>
         <div>
-          <h1 className="font-black text-2xl tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-emerald-900 to-emerald-600">RiceFlow</h1>
+          <h1 className="font-black text-2xl tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-emerald-900 to-emerald-600 dark:from-emerald-400 dark:to-emerald-300" style={darkMode ? {backgroundImage:'linear-gradient(to right, #34d399, #6ee7b7)'} : {}}>RiceFlow</h1>
           <p className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.2em]">BUMI MAS GROUP</p>
         </div>
       </div>
-      <nav className="flex-1 p-5 space-y-2 overflow-y-auto custom-scrollbar">
-        <button onClick={() => setActiveTab('dashboard')} className={`w-full flex items-center space-x-3 p-3.5 rounded-2xl transition-all font-bold text-sm ${activeTab === 'dashboard' ? 'bg-emerald-50 text-emerald-700 shadow-sm border border-emerald-100' : 'hover:bg-slate-50 text-slate-500 hover:text-slate-800'}`}>
-          <Lucide.LayoutDashboard className="w-5 h-5" />
-          <span>Dashboard</span>
-        </button>
-        <div className="pt-8 pb-3 px-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Operasional</div>
-        <button onClick={() => setActiveTab('production')} className={`w-full flex items-center space-x-3 p-3.5 rounded-2xl transition-all font-bold text-sm ${activeTab === 'production' ? 'bg-emerald-50 text-emerald-700 shadow-sm border border-emerald-100' : 'hover:bg-slate-50 text-slate-500 hover:text-slate-800'}`}>
-          <Lucide.Building2 className="w-5 h-5" />
-          <span>PP BUMI MAS</span>
-        </button>
-        <button onClick={() => setActiveTab('trading')} className={`w-full flex items-center space-x-3 p-3.5 rounded-2xl transition-all font-bold text-sm ${activeTab === 'trading' ? 'bg-emerald-50 text-emerald-700 shadow-sm border border-emerald-100' : 'hover:bg-slate-50 text-slate-500 hover:text-slate-800'}`}>
-          <Lucide.ShoppingCart className="w-5 h-5" />
-          <span>Penjualan</span>
-        </button>
-        <button onClick={() => setActiveTab('accounting')} className={`w-full flex items-center space-x-3 p-3.5 rounded-2xl transition-all font-bold text-sm ${activeTab === 'accounting' ? 'bg-emerald-50 text-emerald-700 shadow-sm border border-emerald-100' : 'hover:bg-slate-50 text-slate-500 hover:text-slate-800'}`}>
-          <Lucide.BookOpen className="w-5 h-5" />
-          <span>Pusat Akuntansi</span>
-        </button>
-        <div className="pt-8 pb-3 px-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Keuangan & AI</div>
-        <button onClick={() => setActiveTab('core_finance')} className={`w-full flex items-center space-x-3 p-3.5 rounded-2xl transition-all font-bold text-sm ${activeTab === 'core_finance' ? 'bg-emerald-50 text-emerald-700 shadow-sm border border-emerald-100' : 'hover:bg-slate-50 text-slate-500 hover:text-slate-800'}`}>
-          <Lucide.Banknote className="w-5 h-5" />
-          <span>CoreTax Finance</span>
-        </button>
-        <button onClick={() => setActiveTab('ask-riceflow')} className={`w-full flex items-center space-x-3 p-3.5 rounded-2xl transition-all font-bold text-sm ${activeTab === 'ask-riceflow' ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-200' : 'hover:bg-slate-50 text-slate-500 hover:text-slate-800'}`}>
-          <Lucide.Bot className="w-5 h-5" />
-          <span>Ask RiceFlow AI</span>
-        </button>
-        <button onClick={() => setActiveTab('payments')} className={`w-full flex items-center space-x-3 p-3.5 rounded-2xl transition-all font-bold text-sm ${activeTab === 'payments' ? 'bg-emerald-50 text-emerald-700 shadow-sm border border-emerald-100' : 'hover:bg-slate-50 text-slate-500 hover:text-slate-800'}`}>
-          <Lucide.AlarmClock className="w-5 h-5" />
-          <span>Tagihan & Reorder</span>
-        </button>
+      <nav className="flex-1 p-5 space-y-1 overflow-y-auto custom-scrollbar">
+        {NAV_ITEMS.map((section, si) => (
+          <div key={si}>
+            {section.section && <div className={`pt-8 pb-3 px-4 text-[10px] font-black uppercase tracking-widest ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>{section.section}</div>}
+            {section.items.filter(item => item.roles.includes(role)).map(item => (
+              <button key={item.id} onClick={() => setActiveTab(item.id)} className={`w-full flex items-center space-x-3 p-3.5 rounded-2xl transition-all font-bold text-sm mb-1 ${
+                activeTab === item.id
+                  ? item.special
+                    ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/20'
+                    : darkMode
+                      ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                      : 'bg-emerald-50 text-emerald-700 shadow-sm border border-emerald-100'
+                  : darkMode
+                    ? 'text-slate-400 hover:bg-slate-700/50 hover:text-slate-200'
+                    : 'hover:bg-slate-50 text-slate-500 hover:text-slate-800'
+              }`}>
+                {item.icon}
+                <span>{item.label}</span>
+              </button>
+            ))}
+          </div>
+        ))}
       </nav>
-      <div className="p-6 bg-slate-50/80 backdrop-blur-md border-t border-slate-100">
-         <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-slate-200 rounded-full border-2 border-white shadow-sm overflow-hidden flex items-center justify-center">
-               <Lucide.User className="w-5 h-5 text-slate-500" />
+      <div className={`p-4 border-t ${darkMode ? 'border-slate-700 bg-slate-800/50' : 'border-slate-100 bg-slate-50/80'}`}>
+         {/* Dark Mode Toggle */}
+         <button onClick={() => setDarkMode(!darkMode)} className={`w-full flex items-center justify-between p-3 rounded-2xl mb-3 transition-all ${darkMode ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'}`}>
+            <div className="flex items-center space-x-3">
+              {darkMode ? <Lucide.Moon className="w-4 h-4 text-indigo-400" /> : <Lucide.Sun className="w-4 h-4 text-amber-500" />}
+              <span className={`text-xs font-bold ${darkMode ? 'text-slate-300' : 'text-slate-600'}`}>{darkMode ? 'Mode Gelap' : 'Mode Terang'}</span>
+            </div>
+            <div className={`w-10 h-5 rounded-full p-0.5 transition-colors ${darkMode ? 'bg-indigo-500' : 'bg-slate-300'}`}>
+              <div className={`w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${darkMode ? 'translate-x-5' : 'translate-x-0'}`}></div>
+            </div>
+         </button>
+         {/* User Info */}
+         <div className="flex items-center space-x-3 px-2">
+            <div className={`w-10 h-10 rounded-full border-2 shadow-sm overflow-hidden flex items-center justify-center ${darkMode ? 'bg-slate-700 border-slate-600' : 'bg-slate-200 border-white'}`}>
+               <Lucide.User className={`w-5 h-5 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`} />
             </div>
             <div>
-               <p className="font-bold text-sm text-slate-800">Admin Utama</p>
-               <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Online</p>
+               <p className={`font-bold text-sm ${darkMode ? 'text-white' : 'text-slate-800'}`}>{username || 'Admin'}</p>
+               <p className={`text-[10px] font-black uppercase tracking-widest ${ROLE_COLORS[role]}`}>{ROLE_LABELS[role]}</p>
             </div>
          </div>
       </div>
     </aside>
-    <main className="flex-1 overflow-y-auto h-screen p-4 md:p-10">{children}</main>
+    <main className={`flex-1 overflow-y-auto h-screen p-4 md:p-10 transition-colors duration-300 ${darkMode ? 'bg-slate-900' : ''}`}>{children}</main>
   </div>
-);
+  );
+};
 
 // --- DASHBOARD ---
 const Dashboard = ({ state }: any) => {
@@ -1535,6 +1571,8 @@ const LoginScreen = ({ onLogin, onBack }: { onLogin: (token: string) => void, on
       const data = await res.json();
       if (res.ok && data.access_token) {
         localStorage.setItem('jwt_token', data.access_token);
+        localStorage.setItem('rf_role', data.role || 'admin');
+        localStorage.setItem('rf_username', username);
         onLogin(data.access_token);
       } else {
         setError(data.message || 'Username atau password salah.');
@@ -1602,6 +1640,9 @@ function App() {
   const [token, setToken] = useState<string | null>(localStorage.getItem('jwt_token'));
   const [view, setView] = useState<'landing' | 'login' | 'app'>(token ? 'app' : 'landing');
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [darkMode, setDarkMode] = useState(() => localStorage.getItem('rf_dark') === 'true');
+  const [userRole, setUserRole] = useState<UserRole>(() => (localStorage.getItem('rf_role') as UserRole) || 'admin');
+  const [username, setUsername] = useState(() => localStorage.getItem('rf_username') || 'Admin');
   const [state, setState] = useState(() => {
     const saved = localStorage.getItem('riceflow_v10');
     return saved ? JSON.parse(saved) : INITIAL_STATE;
@@ -1611,13 +1652,24 @@ function App() {
     localStorage.setItem('riceflow_v10', JSON.stringify(state)); 
   }, [state]);
 
+  useEffect(() => {
+    localStorage.setItem('rf_dark', String(darkMode));
+  }, [darkMode]);
+
   const handleLoginSuccess = (t: string) => {
     setToken(t);
     setView('app');
+    // Try to extract role from login response (stored by LoginScreen)
+    const savedRole = localStorage.getItem('rf_role');
+    const savedUser = localStorage.getItem('rf_username');
+    if (savedRole) setUserRole(savedRole as UserRole);
+    if (savedUser) setUsername(savedUser);
   };
 
   const handleLogout = () => {
     localStorage.removeItem('jwt_token');
+    localStorage.removeItem('rf_role');
+    localStorage.removeItem('rf_username');
     setToken(null);
     setView('landing');
   };
@@ -1626,9 +1678,9 @@ function App() {
   if (view === 'login') return <LoginScreen onLogin={handleLoginSuccess} onBack={() => setView('landing')} />;
 
   return (
-    <Layout activeTab={activeTab} setActiveTab={setActiveTab}>
+    <Layout activeTab={activeTab} setActiveTab={setActiveTab} darkMode={darkMode} setDarkMode={setDarkMode} userRole={userRole} username={username}>
       <div className="absolute top-4 right-4 z-50">
-        <button onClick={handleLogout} className="bg-red-100 text-red-600 px-4 py-2 rounded-xl text-sm font-bold hover:bg-red-200 flex items-center gap-2 shadow-sm transition-colors">
+        <button onClick={handleLogout} className={`px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 shadow-sm transition-colors ${darkMode ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30' : 'bg-red-100 text-red-600 hover:bg-red-200'}`}>
           <Lucide.LogOut className="w-4 h-4" /> Keluar
         </button>
       </div>
@@ -1638,6 +1690,7 @@ function App() {
       {activeTab === 'accounting' && <AccountingPanel state={state} />}
       {activeTab === 'core_finance' && <CoreFinancePanel />}
       {activeTab === 'ask-riceflow' && <AskRiceFlowPanel />}
+      {activeTab === 'reports' && <ReportPanel />}
       {activeTab === 'payments' && <PaymentsPanel />}
     </Layout>
   );

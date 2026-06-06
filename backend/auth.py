@@ -29,7 +29,7 @@ def login():
     if user and user.check_password(password):
         # Create JWT Token
         access_token = create_access_token(identity={'username': user.username, 'role': user.role})
-        return jsonify(access_token=access_token), 200
+        return jsonify(access_token=access_token, role=user.role), 200
 
     return jsonify({"error": "Invalid username or password"}), 401
 

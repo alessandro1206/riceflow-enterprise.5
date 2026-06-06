@@ -1,5 +1,6 @@
 from flask import Blueprint, request, jsonify, send_file
 from flask_jwt_extended import jwt_required, get_jwt_identity
+from functools import wraps
 import os
 import json
 import datetime
@@ -19,11 +20,27 @@ except FileNotFoundError:
     pass
 
 from extensions import db
-from models import SystemState, Inventory, ProductionBook, Journal, AILog, Purchase, Sale, Expense, InventoryLog
+from models import User, SystemState, Inventory, ProductionBook, Journal, AILog, Purchase, Sale, Expense, InventoryLog
 from auth import require_api_key
 import pandas as pd
 
 routes_bp = Blueprint('routes', __name__)
+
+# ==========================================
+# ROLE-BASED ACCESS DECORATOR
+# ==========================================
+def role_required(*allowed_roles):
+    def decorator(fn):
+        @wraps(fn)
+        @jwt_required()
+        def wrapper(*args, **kwargs):
+            identity = get_jwt_identity()
+            user_role = identity.get('role', '') if isinstance(identity, dict) else ''
+            if user_role not in allowed_roles:
+                return jsonify({'error': 'Forbidden: insufficient role'}), 403
+            return fn(*args, **kwargs)
+        return wrapper
+    return decorator
 
 # ==========================================
 # STATE SYNC ENDPOINTS (For React App - Protected by JWT)
@@ -447,4 +464,29 @@ def ask_ai():
             return jsonify({'error': f"Gemini API Error: {resp_data}"}), 500
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+# ==========================================
+# USER MANAGEMENT (Admin Only)
+# ==========================================
+@routes_bp.route('/api/auth/users', methods=['GET'])
+@role_required('admin')
+def list_users():
+    users = User.query.all()
+    return jsonify([
+        {'id': u.id, 'username': u.username, 'role': u.role}
+        for u in users
+    ])
+
+@routes_bp.route('/api/auth/users/<int:id>/role', methods=['PUT'])
+@role_required('admin')
+def update_user_role(id):
+    user = User.query.get_or_404(id)
+    data = request.json
+    new_role = data.get('role')
+    valid_roles = ('admin', 'manager', 'operator', 'kasir')
+    if new_role not in valid_roles:
+        return jsonify({'error': f'Invalid role. Must be one of: {valid_roles}'}), 400
+    user.role = new_role
+    db.session.commit()
+    return jsonify({'success': True, 'id': user.id, 'username': user.username, 'role': user.role})
 
