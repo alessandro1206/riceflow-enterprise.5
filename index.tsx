@@ -1447,19 +1447,65 @@ const LandingPage = ({ onGetStarted }: { onGetStarted: () => void }) => {
         
         {/* Mockup Preview */}
         <div className="mt-16 w-full max-w-5xl rounded-t-[2.5rem] bg-white/40 backdrop-blur-xl border-t border-l border-r border-white/60 shadow-2xl p-4 md:p-8 animate-fade-up stagger-3">
-          <div className="w-full h-64 md:h-96 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-50 border border-slate-200 shadow-inner flex items-center justify-center overflow-hidden relative">
-            <div className="absolute top-0 left-0 w-full h-12 bg-white border-b flex items-center px-4 space-x-2">
+          <div className="w-full h-[28rem] md:h-[40rem] rounded-2xl bg-[#f4f7f6] border border-slate-200 shadow-inner overflow-hidden relative flex flex-col">
+            {/* Fake Browser Window Header */}
+            <div className="absolute top-0 left-0 w-full h-12 bg-white/90 backdrop-blur border-b flex items-center px-4 space-x-2 z-20">
                <div className="w-3 h-3 rounded-full bg-red-400"></div>
                <div className="w-3 h-3 rounded-full bg-amber-400"></div>
                <div className="w-3 h-3 rounded-full bg-emerald-400"></div>
             </div>
-            <div className="text-slate-300 flex flex-col items-center">
-              <Lucide.BarChart3 className="w-16 h-16 mb-4" />
-              <p className="font-bold">Enterprise Dashboard Preview</p>
+            
+            {/* Real Dashboard Preview */}
+            <div className="w-full h-full pt-12 overflow-hidden pointer-events-none select-none mask-image-bottom-fade">
+              <div className="transform scale-[0.65] md:scale-[0.85] origin-top w-[153%] md:w-[117%] p-8">
+                <Dashboard state={INITIAL_STATE} />
+              </div>
             </div>
           </div>
         </div>
       </main>
+
+      {/* Features Section */}
+      <section id="features" className="relative z-10 py-24 bg-white border-t border-slate-200">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="text-center mb-16 animate-fade-up">
+            <h3 className="text-3xl md:text-5xl font-black text-slate-800 tracking-tight">Semua Fitur dalam Satu Platform</h3>
+            <p className="mt-4 text-lg text-slate-500 font-medium">Modul lengkap untuk menunjang operasional pabrik beras Anda dari hulu ke hilir.</p>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {[
+              { icon: <Lucide.Building2 className="w-8 h-8 text-emerald-500" />, title: 'Manajemen Giling & Timbangan', desc: 'Sistem timbangan otomatis dan pencatatan rendemen giling beras secara real-time.' },
+              { icon: <Lucide.ShoppingCart className="w-8 h-8 text-blue-500" />, title: 'Surat Jalan & Trading', desc: 'Pembuatan surat jalan instan dan manajemen penjualan beras ke berbagai distributor.' },
+              { icon: <Lucide.BookOpen className="w-8 h-8 text-indigo-500" />, title: 'Akuntansi & Neraca', desc: 'Pembukuan otomatis dengan Chart of Accounts standar untuk melacak laba-rugi pabrik.' },
+              { icon: <Lucide.Banknote className="w-8 h-8 text-rose-500" />, title: 'CoreTax Finance', desc: 'Integrasi langsung ke sistem perpajakan CoreTax untuk efisiensi pelaporan.' },
+              { icon: <Lucide.Bot className="w-8 h-8 text-teal-500" />, title: 'Ask RiceFlow AI', desc: 'Asisten cerdas berbasis AI untuk menganalisa data pabrik dan memberikan rekomendasi.' },
+              { icon: <Lucide.AlarmClock className="w-8 h-8 text-amber-500" />, title: 'Tagihan & Reorder', desc: 'Sistem notifikasi cerdas untuk tagihan jatuh tempo dan saran reorder stok gabah.' },
+            ].map((f, i) => (
+              <div key={i} className={`p-8 bg-slate-50 rounded-3xl border border-slate-100 hover:shadow-xl hover:bg-white hover:-translate-y-2 transition-all duration-300 animate-fade-up stagger-${(i%3)+1}`}>
+                <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-sm mb-6 border border-slate-100 group-hover:scale-110 transition-transform">
+                  {f.icon}
+                </div>
+                <h4 className="text-xl font-black text-slate-800 mb-2">{f.title}</h4>
+                <p className="text-slate-500 font-medium leading-relaxed">{f.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Footer CTA */}
+      <section className="relative z-10 py-24 bg-slate-900 text-center">
+        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20"></div>
+        <div className="relative z-10 max-w-3xl mx-auto px-4">
+          <Lucide.Wheat className="w-12 h-12 text-emerald-400 mx-auto mb-6" />
+          <h2 className="text-4xl md:text-5xl font-black text-white tracking-tight mb-6">Siap Mengoptimalkan Pabrik Anda?</h2>
+          <p className="text-xl text-slate-400 mb-10">Tinggalkan pencatatan manual dan beralih ke otomatisasi AI penuh bersama RiceFlow Enterprise.</p>
+          <button onClick={onGetStarted} className="px-10 py-5 bg-emerald-500 hover:bg-emerald-400 text-slate-900 font-black text-lg rounded-2xl shadow-2xl shadow-emerald-500/20 transition-all transform hover:scale-105 active:scale-95">
+            Masuk ke Aplikasi
+          </button>
+        </div>
+      </section>
     </div>
   );
 };
