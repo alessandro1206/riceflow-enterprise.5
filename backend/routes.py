@@ -8,6 +8,16 @@ import requests
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
 
+try:
+    env_path = os.path.join(os.path.dirname(__file__), '.env')
+    with open(env_path, 'r') as f:
+        for line in f:
+            if '=' in line and not line.startswith('#'):
+                k, v = line.strip().split('=', 1)
+                os.environ[k] = v
+except FileNotFoundError:
+    pass
+
 from extensions import db
 from models import SystemState, Inventory, ProductionBook, Journal, OpenClawLog, Purchase, Sale, Expense, InventoryLog
 from auth import require_api_key
@@ -377,4 +387,56 @@ def get_reorder_suggestions():
             'last_price_per_kg': recent_purchase.price_per_kg if recent_purchase else 0,
         })
     return jsonify(suggestions)
+
+# ==========================================
+# PHASE 4: AI ASSISTANT (Gemini Integration)
+# ==========================================
+@routes_bp.route('/api/ai/ask', methods=['POST'])
+@jwt_required()
+def ask_ai():
+    data = request.json
+    user_query = data.get('query')
+    if not user_query:
+        return jsonify({'error': 'No query provided'}), 400
+
+    api_key = os.environ.get('GEMINI_API_KEY')
+    if not api_key:
+        return jsonify({'error': 'Gemini API Key not configured on server'}), 500
+
+    # Gather Context
+    inventory = Inventory.query.all()
+    sales = Sale.query.all()
+    purchases = Purchase.query.all()
+    pending = Purchase.query.filter(Purchase.payment_status == 'DP').all()
+
+    context = "System Data for RiceFlow ERP:\n"
+    context += f"Inventory Items: {len(inventory)}\n"
+    for item in inventory:
+        context += f"- {item.item_name}: {item.quantity} kg (Min: {item.minimum_threshold})\n"
+    
+    total_sales = sum(s.total_amount for s in sales if s.total_amount)
+    total_purchases = sum(p.total_amount for p in purchases if p.total_amount)
+    total_unpaid = sum(p.total_amount for p in pending if p.total_amount)
+    
+    context += f"\nFinancials:\n- Total Sales: Rp {total_sales:,.0f}\n- Total Purchases: Rp {total_purchases:,.0f}\n- Total Unpaid Debt (Tagihan): Rp {total_unpaid:,.0f}\n"
+
+    prompt = f"You are the RiceFlow ERP AI Assistant. Be concise, helpful, and use markdown formatting. Use the following live data to answer the user's question:\n\n{context}\n\nUser Question: {user_query}"
+
+    gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={api_key}"
+    payload = {
+        "contents": [{"parts": [{"text": prompt}]}]
+    }
+
+    try:
+        response = requests.post(gemini_url, json=payload, headers={'Content-Type': 'application/json'}, timeout=15)
+        resp_data = response.json()
+        if response.status_code == 200:
+            ai_text = resp_data['candidates'][0]['content']['parts'][0]['text']
+            db.session.add(OpenClawLog(action="Ask RiceFlow AI", details=f"Q: {user_query} | A: {ai_text[:50]}..."))
+            db.session.commit()
+            return jsonify({'success': True, 'answer': ai_text})
+        else:
+            return jsonify({'error': f"Gemini API Error: {resp_data}"}), 500
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 

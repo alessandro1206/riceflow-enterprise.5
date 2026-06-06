@@ -84,9 +84,9 @@ const Layout = ({ children, activeTab, setActiveTab }: any) => (
           <Lucide.Banknote className="w-5 h-5" />
           <span>CoreTax Finance</span>
         </button>
-        <button onClick={() => setActiveTab('openclaw')} className={`w-full flex items-center space-x-3 p-3.5 rounded-2xl transition-all font-bold text-sm ${activeTab === 'openclaw' ? 'bg-emerald-50 text-emerald-700 shadow-sm border border-emerald-100' : 'hover:bg-slate-50 text-slate-500 hover:text-slate-800'}`}>
-          <Lucide.Terminal className="w-5 h-5" />
-          <span>AI Audit Log</span>
+        <button onClick={() => setActiveTab('ask-riceflow')} className={`w-full flex items-center space-x-3 p-3.5 rounded-2xl transition-all font-bold text-sm ${activeTab === 'ask-riceflow' ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-200' : 'hover:bg-slate-50 text-slate-500 hover:text-slate-800'}`}>
+          <Lucide.Bot className="w-5 h-5" />
+          <span>Ask RiceFlow AI</span>
         </button>
         <button onClick={() => setActiveTab('payments')} className={`w-full flex items-center space-x-3 p-3.5 rounded-2xl transition-all font-bold text-sm ${activeTab === 'payments' ? 'bg-emerald-50 text-emerald-700 shadow-sm border border-emerald-100' : 'hover:bg-slate-50 text-slate-500 hover:text-slate-800'}`}>
           <Lucide.AlarmClock className="w-5 h-5" />
@@ -813,48 +813,96 @@ const AccountingPanel = ({ state }: any) => {
   );
 };
 
-// --- OPENCLAW AUDIT LOG ---
-const OpenClawPanel = () => {
-  const [logs, setLogs] = useState<any[]>([]);
+// --- ASK RICEFLOW AI ASSISTANT ---
+const AskRiceFlowPanel = () => {
+  const [query, setQuery] = useState('');
+  const [chatHistory, setChatHistory] = useState<{role: 'user' | 'ai', text: string}[]>([
+    {role: 'ai', text: 'Halo! Saya adalah Asisten AI RiceFlow. Ada yang bisa saya bantu terkait data stok, penjualan, atau keuangan hari ini?'}
+  ]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const fetchLogs = async () => {
-    setLoading(true); setError('');
+  const handleAsk = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!query.trim() || loading) return;
+
+    const userQ = query;
+    setQuery('');
+    setChatHistory(prev => [...prev, {role: 'user', text: userQ}]);
+    setLoading(true);
+    setError('');
+
     try {
       const token = localStorage.getItem('jwt_token') || '';
-      const res = await fetch(`${API_BASE}/api/logs/openclaw`, { headers: { 'Authorization': `Bearer ${token}` } });
-      if (res.ok) { const d = await res.json(); setLogs(d.logs || []); }
-      else setError('Gagal memuat log. Pastikan Anda sudah login.');
-    } catch (e: any) { setError(e.message); }
-    finally { setLoading(false); }
+      const res = await fetch(`${API_BASE}/api/ai/ask`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: userQ })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setChatHistory(prev => [...prev, {role: 'ai', text: data.answer}]);
+      } else {
+        setError(data.error || 'Gagal menghubungi AI.');
+      }
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  useEffect(() => { fetchLogs(); const i = setInterval(fetchLogs, 30000); return () => clearInterval(i); }, []);
-
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="bg-slate-900 p-8 rounded-3xl flex justify-between items-center">
+    <div className="space-y-6 animate-fade-in flex flex-col h-[calc(100vh-8rem)]">
+      <div className="bg-gradient-to-r from-emerald-600 to-teal-700 p-8 rounded-3xl flex justify-between items-center shadow-lg shadow-emerald-900/20 flex-shrink-0">
         <div className="flex items-center gap-4">
-          <div className="p-3 bg-emerald-500/20 rounded-2xl"><Lucide.Activity className="w-8 h-8 text-emerald-400" /></div>
-          <div><h2 className="text-3xl font-black text-white">OpenClaw <span className="text-emerald-400">Audit Log</span></h2><p className="text-slate-400">Real-time monitoring of AI Orchestrator actions</p></div>
+          <div className="p-3 bg-white/20 rounded-2xl backdrop-blur-md"><Lucide.Bot className="w-8 h-8 text-white" /></div>
+          <div><h2 className="text-3xl font-black text-white">Ask RiceFlow <span className="text-emerald-200">AI</span></h2><p className="text-emerald-100">Asisten cerdas untuk ERP Anda</p></div>
         </div>
-        <button onClick={fetchLogs} disabled={loading} className="flex items-center gap-2 px-6 py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl transition-all disabled:opacity-50">
-          <Lucide.RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />{loading ? 'Memuat...' : 'Refresh Feed'}
-        </button>
       </div>
-      {error && <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-xl text-red-400 font-medium">{error}</div>}
-      <div className="bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden">
-        <div className="p-6 border-b border-slate-800 flex items-center gap-2 text-slate-300 font-bold"><Lucide.Terminal className="w-5 h-5 text-emerald-400" /> System Execution Log</div>
-        <div className="divide-y divide-slate-800">
-          {logs.length === 0 && !loading && <div className="p-12 text-center text-slate-500">Belum ada log OpenClaw.</div>}
-          {logs.map(log => (
-            <div key={log.id} className="p-6 hover:bg-slate-800/50 flex flex-col md:flex-row gap-4 md:items-start group">
-              <span className="flex-shrink-0 inline-flex items-center px-3 py-1 bg-slate-800 text-slate-300 text-xs font-mono rounded-lg border border-slate-700">{new Date(log.timestamp).toLocaleString('id-ID')}</span>
-              <div><h3 className="text-lg font-bold text-white mb-1 group-hover:text-emerald-400 transition-colors">{log.action}</h3><p className="text-slate-400 text-sm font-mono whitespace-pre-wrap">{log.details || 'No additional details.'}</p></div>
+      
+      {error && <div className="bg-rose-50 border border-rose-200 p-4 rounded-xl text-rose-600 font-bold">{error}</div>}
+      
+      <div className="flex-1 bg-white border border-slate-200 shadow-sm rounded-3xl overflow-hidden flex flex-col">
+        <div className="flex-1 p-6 overflow-y-auto space-y-6">
+          {chatHistory.map((msg, i) => (
+            <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+              <div className={`max-w-[80%] p-5 rounded-2xl ${msg.role === 'user' ? 'bg-emerald-600 text-white rounded-tr-sm' : 'bg-slate-50 border border-slate-100 text-slate-700 rounded-tl-sm'} shadow-sm`}>
+                <div className="flex items-center gap-2 mb-2">
+                  {msg.role === 'ai' ? <Lucide.Bot className="w-4 h-4 text-emerald-500" /> : <Lucide.User className="w-4 h-4 text-emerald-200" />}
+                  <span className="font-bold text-xs uppercase tracking-widest opacity-80">{msg.role === 'ai' ? 'RiceFlow AI' : 'Anda'}</span>
+                </div>
+                <div className="whitespace-pre-wrap leading-relaxed font-medium text-sm">
+                  {msg.text}
+                </div>
+              </div>
             </div>
           ))}
+          {loading && (
+            <div className="flex justify-start">
+              <div className="bg-slate-50 border border-slate-100 text-slate-500 p-5 rounded-2xl rounded-tl-sm shadow-sm flex items-center gap-2">
+                <Lucide.Loader2 className="w-5 h-5 animate-spin" /> <span className="font-bold">AI sedang berpikir...</span>
+              </div>
+            </div>
+          )}
         </div>
+        
+        <form onSubmit={handleAsk} className="p-4 bg-slate-50 border-t border-slate-100 flex gap-4">
+          <input 
+            type="text" 
+            value={query} 
+            onChange={e => setQuery(e.target.value)}
+            placeholder="Tanyakan sesuatu tentang stok, hutang, atau penjualan..."
+            className="flex-1 p-4 rounded-xl border border-slate-200 focus:ring-4 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all font-medium text-slate-700"
+          />
+          <button 
+            type="submit" 
+            disabled={loading || !query.trim()}
+            className="px-8 py-4 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl transition-all disabled:opacity-50 click-squish shadow-md shadow-emerald-200 flex items-center gap-2"
+          >
+            <Lucide.Send className="w-5 h-5" /> Kirim
+          </button>
+        </form>
       </div>
     </div>
   );
@@ -1431,7 +1479,7 @@ function App() {
       {activeTab === 'trading' && <TradingPanel state={state} setState={setState} />}
       {activeTab === 'accounting' && <AccountingPanel state={state} />}
       {activeTab === 'core_finance' && <CoreFinancePanel />}
-      {activeTab === 'openclaw' && <OpenClawPanel />}
+      {activeTab === 'ask-riceflow' && <AskRiceFlowPanel />}
       {activeTab === 'payments' && <PaymentsPanel />}
     </Layout>
   );
