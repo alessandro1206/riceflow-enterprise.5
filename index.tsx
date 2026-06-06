@@ -480,10 +480,11 @@ const AccountingPanel = ({ state }: any) => {
   useEffect(() => {
     const h = { 'Authorization': `Bearer ${localStorage.getItem('jwt_token') || ''}` };
     Promise.all([
-      fetch(`${API_BASE}/api/finance/purchases`, { headers: h }).then(r => r.ok ? r.json() : []),
-      fetch(`${API_BASE}/api/finance/sales`, { headers: h }).then(r => r.ok ? r.json() : []),
-      fetch(`${API_BASE}/api/finance/expenses`, { headers: h }).then(r => r.ok ? r.json() : [])
-    ]).then(([p, s, e]) => { setPurchases(p); setSales(s); setExpenses(e); setLoading(false); });
+      fetch(`${API_BASE}/api/finance/purchases`, { headers: h }).then(r => r.ok ? r.json() : []).catch(() => []),
+      fetch(`${API_BASE}/api/finance/sales`, { headers: h }).then(r => r.ok ? r.json() : []).catch(() => []),
+      fetch(`${API_BASE}/api/finance/expenses`, { headers: h }).then(r => r.ok ? r.json() : []).catch(() => [])
+    ]).then(([p, s, e]) => { setPurchases(p); setSales(s); setExpenses(e); setLoading(false); })
+      .catch(() => setLoading(false));
   }, []);
 
   const totalPendapatan = sales.reduce((a, s) => a + (s.total_amount || 0), 0);
@@ -670,8 +671,7 @@ const CoreFinancePanel = () => {
       if (pR.ok) setPurchases(await pR.json());
       if (sR.ok) setSales(await sR.json());
       if (eR.ok) setExpenses(await eR.json());
-    } catch(e) { console.error(e); }
-    setLoading(false);
+    } catch(e) { console.error(e); } finally { setLoading(false); }
   };
 
   useEffect(() => { fetchData(); }, []);
@@ -994,8 +994,67 @@ const PaymentsPanel = () => {
   );
 };
 
+// --- LOGIN SCREEN ---
+const LoginScreen = ({ onLogin }: { onLogin: (token: string) => void }) => {
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleLogin = async () => {
+    if (!username || !password) return setError('Masukkan username dan password.');
+    setLoading(true); setError('');
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+      const data = await res.json();
+      if (res.ok && data.access_token) {
+        localStorage.setItem('jwt_token', data.access_token);
+        onLogin(data.access_token);
+      } else {
+        setError(data.message || 'Username atau password salah.');
+      }
+    } catch(e) { setError('Tidak dapat terhubung ke server.'); }
+    setLoading(false);
+  };
+
+  return (
+    <div className="min-h-screen bg-emerald-950 flex items-center justify-center p-4">
+      <div className="w-full max-w-md">
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-emerald-600 rounded-3xl mb-4">
+            <Lucide.Wheat className="w-9 h-9 text-yellow-400" />
+          </div>
+          <h1 className="text-4xl font-black text-white tracking-tight">RiceFlow</h1>
+          <p className="text-emerald-400 font-bold uppercase tracking-widest text-xs mt-1">Bumi Mas Group — Enterprise ERP</p>
+        </div>
+        <div className="bg-white rounded-3xl p-8 shadow-2xl space-y-4">
+          <h2 className="text-xl font-black text-slate-800 mb-2">Masuk ke Sistem</h2>
+          {error && <div className="bg-red-50 border border-red-200 text-red-600 text-sm font-bold p-3 rounded-xl">{error}</div>}
+          <div>
+            <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-1">Username</label>
+            <input value={username} onChange={e => setUsername(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleLogin()} placeholder="admin" className="w-full p-4 border border-slate-200 rounded-2xl font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-400" />
+          </div>
+          <div>
+            <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-1">Password</label>
+            <input type="password" value={password} onChange={e => setPassword(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleLogin()} placeholder="••••••••" className="w-full p-4 border border-slate-200 rounded-2xl font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-400" />
+          </div>
+          <button onClick={handleLogin} disabled={loading} className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-2xl transition-colors flex items-center justify-center gap-2 disabled:opacity-60">
+            {loading ? <Lucide.Loader2 className="w-5 h-5 animate-spin" /> : <Lucide.LogIn className="w-5 h-5" />}
+            {loading ? 'Memuat...' : 'Masuk'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // --- MAIN APP ---
 function App() {
+  const [token, setToken] = useState<string | null>(localStorage.getItem('jwt_token'));
   const [activeTab, setActiveTab] = useState('dashboard');
   const [state, setState] = useState(() => {
     const saved = localStorage.getItem('riceflow_v10');
@@ -1006,8 +1065,15 @@ function App() {
     localStorage.setItem('riceflow_v10', JSON.stringify(state)); 
   }, [state]);
 
+  if (!token) return <LoginScreen onLogin={t => setToken(t)} />;
+
   return (
     <Layout activeTab={activeTab} setActiveTab={setActiveTab}>
+      <div className="absolute top-4 right-4 z-50">
+        <button onClick={() => { localStorage.removeItem('jwt_token'); setToken(null); }} className="bg-red-100 text-red-600 px-4 py-2 rounded-xl text-sm font-bold hover:bg-red-200 flex items-center gap-2">
+          <Lucide.LogOut className="w-4 h-4" /> Logout
+        </button>
+      </div>
       {activeTab === 'dashboard' && <Dashboard state={state} />}
       {activeTab === 'production' && <ProductionPanel state={state} setState={setState} />}
       {activeTab === 'trading' && <TradingPanel state={state} setState={setState} />}
