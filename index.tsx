@@ -464,6 +464,8 @@ const TradingPanel = ({ state, setState }: any) => {
     noSj: `SJ-${Date.now().toString().slice(-6)}`, 
     customer: '', 
     address: '', 
+    expedition: '',
+    handler: '',
     driver: '', 
     platNo: '', 
     items: [{ id: 1, name: 'Beras Premium 25kg', qty: 0, weight: 25 }] 
@@ -500,7 +502,7 @@ const TradingPanel = ({ state, setState }: any) => {
               <input value={new Date().toLocaleDateString('id-ID')} disabled className="w-full p-4 bg-slate-100 border border-slate-200 rounded-2xl font-bold text-slate-500" />
             </div>
             <div className="col-span-2">
-              <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-2">Tujuan / Pelanggan</label>
+              <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-2">Tujuan / Pelanggan Akhir</label>
               <input value={formData.customer} onChange={e => setFormData({...formData, customer: e.target.value})} placeholder="PT. Distributor Makmur" className="w-full p-4 border border-slate-200 rounded-2xl font-bold focus:ring-2 focus:ring-indigo-400" />
             </div>
             <div className="col-span-2">
@@ -508,11 +510,19 @@ const TradingPanel = ({ state, setState }: any) => {
               <input value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} placeholder="Jl. Raya Perdagangan No. 123" className="w-full p-4 border border-slate-200 rounded-2xl font-bold focus:ring-2 focus:ring-indigo-400" />
             </div>
             <div>
+              <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-2">Nama Ekspedisi</label>
+              <input value={formData.expedition} onChange={e => setFormData({...formData, expedition: e.target.value})} placeholder="Karya Indah Cargo" className="w-full p-4 border border-slate-200 rounded-2xl font-bold focus:ring-2 focus:ring-indigo-400" />
+            </div>
+            <div>
+              <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-2">Pengurus Ekspedisi</label>
+              <input value={formData.handler} onChange={e => setFormData({...formData, handler: e.target.value})} placeholder="Pak Budi Ekspedisi" className="w-full p-4 border border-slate-200 rounded-2xl font-bold focus:ring-2 focus:ring-indigo-400" />
+            </div>
+            <div>
               <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-2">Nama Supir</label>
               <input value={formData.driver} onChange={e => setFormData({...formData, driver: e.target.value})} placeholder="Budi" className="w-full p-4 border border-slate-200 rounded-2xl font-bold focus:ring-2 focus:ring-indigo-400" />
             </div>
             <div>
-              <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-2">Plat Nomor Kendaraan</label>
+              <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-2">Plat Nomor</label>
               <input value={formData.platNo} onChange={e => setFormData({...formData, platNo: e.target.value})} placeholder="B 1234 CD" className="w-full p-4 border border-slate-200 rounded-2xl font-bold focus:ring-2 focus:ring-indigo-400 uppercase" />
             </div>
           </div>
@@ -561,12 +571,12 @@ const TradingPanel = ({ state, setState }: any) => {
           {/* META INFO */}
           <div className="grid grid-cols-2 gap-8 mb-8">
             <div>
-              <p className="text-xs font-black text-slate-400 uppercase mb-1">Kepada Yth:</p>
+              <p className="text-xs font-black text-slate-400 uppercase mb-1">Tujuan / Pelanggan:</p>
               <p className="text-lg font-black text-slate-800">{formData.customer || '_______________________'}</p>
               <p className="text-sm font-bold text-slate-600 mt-1">{formData.address || '_______________________'}</p>
             </div>
             <div className="bg-slate-50 p-4 rounded-xl border">
-              <div className="flex justify-between mb-2">
+              <div className="flex justify-between mb-2 border-b border-slate-200 pb-2">
                 <span className="text-xs font-black text-slate-500 uppercase">No. Dokumen</span>
                 <span className="font-black text-slate-800">{formData.noSj}</span>
               </div>
@@ -575,12 +585,20 @@ const TradingPanel = ({ state, setState }: any) => {
                 <span className="font-black text-slate-800">{new Date().toLocaleDateString('id-ID')}</span>
               </div>
               <div className="flex justify-between mb-2">
-                <span className="text-xs font-black text-slate-500 uppercase">Kendaraan</span>
-                <span className="font-black text-slate-800">{formData.platNo || '-'}</span>
+                <span className="text-xs font-black text-slate-500 uppercase">Ekspedisi</span>
+                <span className="font-black text-slate-800">{formData.expedition || '-'}</span>
               </div>
-              <div className="flex justify-between">
+              <div className="flex justify-between mb-2">
+                <span className="text-xs font-black text-slate-500 uppercase">Pengurus</span>
+                <span className="font-black text-slate-800">{formData.handler || '-'}</span>
+              </div>
+              <div className="flex justify-between mb-2">
                 <span className="text-xs font-black text-slate-500 uppercase">Supir</span>
                 <span className="font-black text-slate-800">{formData.driver || '-'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-xs font-black text-slate-500 uppercase">Kendaraan</span>
+                <span className="font-black text-slate-800">{formData.platNo || '-'}</span>
               </div>
             </div>
           </div>
@@ -614,18 +632,22 @@ const TradingPanel = ({ state, setState }: any) => {
           </table>
 
           {/* SIGNATURES */}
-          <div className="grid grid-cols-3 gap-4 mt-auto pt-16">
+          <div className="grid grid-cols-4 gap-4 mt-auto pt-16">
             <div className="text-center">
-              <p className="text-xs font-bold text-slate-500 mb-20">Penerima / Pelanggan,</p>
-              <p className="font-black text-slate-800 border-b-2 border-slate-800 inline-block px-8">( {formData.customer || '                    '} )</p>
+              <p className="text-xs font-bold text-slate-500 mb-20">Pelanggan,</p>
+              <p className="font-black text-slate-800 border-b-2 border-slate-800 inline-block px-4 w-full">( {formData.customer || '          '} )</p>
             </div>
             <div className="text-center">
-              <p className="text-xs font-bold text-slate-500 mb-20">Supir,</p>
-              <p className="font-black text-slate-800 border-b-2 border-slate-800 inline-block px-8">( {formData.driver || '                    '} )</p>
+              <p className="text-xs font-bold text-slate-500 mb-20">Pengurus Expedisi,</p>
+              <p className="font-black text-slate-800 border-b-2 border-slate-800 inline-block px-4 w-full">( {formData.handler || '          '} )</p>
             </div>
             <div className="text-center">
-              <p className="text-xs font-bold text-slate-500 mb-20">Hormat Kami,</p>
-              <p className="font-black text-slate-800 border-b-2 border-slate-800 inline-block px-8">( Bag. Pengiriman )</p>
+              <p className="text-xs font-bold text-slate-500 mb-20">Supir Expedisi,</p>
+              <p className="font-black text-slate-800 border-b-2 border-slate-800 inline-block px-4 w-full">( {formData.driver || '          '} )</p>
+            </div>
+            <div className="text-center">
+              <p className="text-xs font-bold text-slate-500 mb-20">Gudang / Muat,</p>
+              <p className="font-black text-slate-800 border-b-2 border-slate-800 inline-block px-4 w-full">( Bag. Pengiriman )</p>
             </div>
           </div>
           
