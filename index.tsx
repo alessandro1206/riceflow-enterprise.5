@@ -470,30 +470,133 @@ const TradingPanel = ({ state, setState }: any) => {
 };
 
 const AccountingPanel = ({ state }: any) => {
+  const [purchases, setPurchases] = useState<any[]>([]);
+  const [sales, setSales] = useState<any[]>([]);
+  const [expenses, setExpenses] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [acctTab, setAcctTab] = useState<'jurnal'|'neraca'|'buku_besar'>('neraca');
+  const [bbAccount, setBbAccount] = useState('pembelian');
+
+  useEffect(() => {
+    const h = { 'Authorization': `Bearer ${localStorage.getItem('jwt_token') || ''}` };
+    Promise.all([
+      fetch(`${API_BASE}/api/finance/purchases`, { headers: h }).then(r => r.ok ? r.json() : []),
+      fetch(`${API_BASE}/api/finance/sales`, { headers: h }).then(r => r.ok ? r.json() : []),
+      fetch(`${API_BASE}/api/finance/expenses`, { headers: h }).then(r => r.ok ? r.json() : [])
+    ]).then(([p, s, e]) => { setPurchases(p); setSales(s); setExpenses(e); setLoading(false); });
+  }, []);
+
+  const totalPendapatan = sales.reduce((a, s) => a + (s.total_amount || 0), 0);
+  const totalPembelian = purchases.reduce((a, p) => a + (p.total_amount || 0), 0);
+  const totalPembelianDP = purchases.filter(p => p.payment_status === 'DP').reduce((a, p) => a + (p.total_amount || 0), 0);
+  const totalBiaya = expenses.reduce((a, e) => a + (e.amount || 0), 0);
+  const labaBersih = totalPendapatan - totalPembelian - totalBiaya;
+
+  if (loading) return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div></div>;
+
   return (
     <div className="space-y-6">
-       <div className="bg-white p-8 rounded-3xl border shadow-sm">
-          <h3 className="font-black text-slate-800 mb-6">Jurnal Umum (Automatic Double Entry)</h3>
-          <div className="divide-y max-h-[500px] overflow-y-auto pr-4">
-             {state.journal.slice().reverse().map((j: any) => (
-               <div key={j.id} className="py-6">
-                  <div className="flex justify-between mb-2">
-                     <span className="text-xs font-black text-blue-600 bg-blue-50 px-2 py-1 rounded-lg">{j.date}</span>
-                     <span className="text-xs italic text-slate-400">{j.description}</span>
-                  </div>
-                  <div className="space-y-1">
-                     {j.lines.map((l: any, idx: number) => (
-                        <div key={idx} className={`grid grid-cols-4 text-xs ${l.credit > 0 ? 'pl-8 text-slate-500' : 'font-bold text-slate-800'}`}>
-                           <span className="col-span-2">{state.accounts.find((a: any) => a.code === l.accountId)?.name}</span>
-                           <span className="text-right">{l.debit > 0 ? fCurrency(l.debit) : ''}</span>
-                           <span className="text-right">{l.credit > 0 ? fCurrency(l.credit) : ''}</span>
-                        </div>
-                     ))}
-                  </div>
-               </div>
-             ))}
+      <div>
+        <h2 className="text-3xl font-black text-slate-800 flex items-center"><Lucide.BookOpen className="w-8 h-8 mr-3 text-blue-600" />Pusat Akuntansi</h2>
+        <p className="text-slate-500 mt-1">Terhubung langsung ke data CoreTax Finance</p>
+      </div>
+      <div className="flex gap-2">
+        {([['neraca','Neraca Saldo'],['jurnal','Jurnal Umum'],['buku_besar','Buku Besar']] as const).map(([id,label]) => (
+          <button key={id} onClick={() => setAcctTab(id)} className={`px-5 py-2.5 rounded-2xl font-bold whitespace-nowrap transition-all ${acctTab === id ? 'bg-blue-600 text-white shadow-lg' : 'bg-white text-slate-500 hover:bg-slate-50 border border-slate-200'}`}>{label}</button>
+        ))}
+      </div>
+
+      {acctTab === 'neraca' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* ASET */}
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="p-5 bg-blue-600 text-white"><h3 className="font-black text-lg">ASET</h3></div>
+            <div className="divide-y">
+              <div className="p-4 flex justify-between"><span className="text-slate-600">Piutang Dagang (Penjualan)</span><span className="font-mono font-bold text-blue-700">Rp {totalPendapatan.toLocaleString('id-ID')}</span></div>
+              <div className="p-4 flex justify-between bg-blue-50"><span className="font-black text-slate-800">Total Aset</span><span className="font-mono font-black text-blue-800">Rp {totalPendapatan.toLocaleString('id-ID')}</span></div>
+            </div>
           </div>
-       </div>
+          {/* LIABILITAS + MODAL */}
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="p-5 bg-rose-600 text-white"><h3 className="font-black text-lg">LIABILITAS & MODAL</h3></div>
+            <div className="divide-y">
+              <div className="p-4 flex justify-between"><span className="text-slate-600">Utang Dagang (Pembelian DP)</span><span className="font-mono font-bold text-rose-600">Rp {totalPembelianDP.toLocaleString('id-ID')}</span></div>
+              <div className="p-4 flex justify-between"><span className="text-slate-600">Total Biaya</span><span className="font-mono font-bold text-rose-600">Rp {totalBiaya.toLocaleString('id-ID')}</span></div>
+              <div className="p-4 flex justify-between"><span className="text-slate-600">Laba Ditahan (Saldo)</span><span className={`font-mono font-bold ${labaBersih >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>Rp {labaBersih.toLocaleString('id-ID')}</span></div>
+              <div className="p-4 flex justify-between bg-rose-50"><span className="font-black text-slate-800">Total Liabilitas + Modal</span><span className="font-mono font-black text-rose-800">Rp {totalPendapatan.toLocaleString('id-ID')}</span></div>
+            </div>
+          </div>
+          {/* Summary */}
+          <div className="md:col-span-2 grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[
+              {label:'Total Penjualan', val: totalPendapatan, color:'emerald'},
+              {label:'Total Pembelian', val: totalPembelian, color:'amber'},
+              {label:'Total Biaya', val: totalBiaya, color:'rose'},
+              {label:'Laba Bersih', val: labaBersih, color: labaBersih>=0?'blue':'red'},
+            ].map((s,i) => (
+              <div key={i} className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
+                <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">{s.label}</p>
+                <p className={`text-xl font-black text-${s.color}-600 font-mono`}>Rp {s.val.toLocaleString('id-ID')}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {acctTab === 'jurnal' && (
+        <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="p-5 border-b border-slate-100"><h3 className="font-black text-slate-800">Jurnal Otomatis (dari CoreTax Data)</h3></div>
+          <div className="divide-y max-h-[600px] overflow-y-auto">
+            {purchases.map((p,i) => (
+              <div key={`p-${i}`} className="p-4">
+                <div className="flex justify-between mb-1"><span className="text-xs font-black text-blue-600 bg-blue-50 px-2 py-1 rounded">{new Date(p.date).toLocaleDateString('id-ID')}</span><span className="text-xs italic text-slate-400">Pembelian: {p.supplier_name}</span></div>
+                <div className="pl-4 space-y-1 text-xs">
+                  <div className="flex justify-between font-bold text-slate-800"><span>Persediaan Bahan</span><span>{p.total_amount?.toLocaleString('id-ID')}</span></div>
+                  <div className="flex justify-between pl-6 text-slate-500"><span>Utang Dagang</span><span>{p.total_amount?.toLocaleString('id-ID')}</span></div>
+                </div>
+              </div>
+            ))}
+            {sales.map((s,i) => (
+              <div key={`s-${i}`} className="p-4">
+                <div className="flex justify-between mb-1"><span className="text-xs font-black text-emerald-600 bg-emerald-50 px-2 py-1 rounded">{new Date(s.date).toLocaleDateString('id-ID')}</span><span className="text-xs italic text-slate-400">Penjualan: {s.customer_name}</span></div>
+                <div className="pl-4 space-y-1 text-xs">
+                  <div className="flex justify-between font-bold text-slate-800"><span>Piutang Dagang</span><span>{s.total_amount?.toLocaleString('id-ID')}</span></div>
+                  <div className="flex justify-between pl-6 text-slate-500"><span>Pendapatan Penjualan</span><span>{s.total_amount?.toLocaleString('id-ID')}</span></div>
+                </div>
+              </div>
+            ))}
+            {expenses.map((e,i) => (
+              <div key={`e-${i}`} className="p-4">
+                <div className="flex justify-between mb-1"><span className="text-xs font-black text-rose-600 bg-rose-50 px-2 py-1 rounded">{new Date(e.date).toLocaleDateString('id-ID')}</span><span className="text-xs italic text-slate-400">Biaya: {e.description}</span></div>
+                <div className="pl-4 space-y-1 text-xs">
+                  <div className="flex justify-between font-bold text-slate-800"><span>{e.category}</span><span>{e.amount?.toLocaleString('id-ID')}</span></div>
+                  <div className="flex justify-between pl-6 text-slate-500"><span>Kas & Bank</span><span>{e.amount?.toLocaleString('id-ID')}</span></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {acctTab === 'buku_besar' && (
+        <div className="space-y-4">
+          <div className="flex gap-2">
+            {[['pembelian','Pembelian'],['penjualan','Penjualan'],['biaya','Biaya']].map(([id,label]) => (
+              <button key={id} onClick={() => setBbAccount(id)} className={`px-4 py-2 rounded-xl font-bold text-sm transition-all ${bbAccount === id ? 'bg-slate-900 text-white' : 'bg-white border border-slate-200 text-slate-500'}`}>{label}</button>
+            ))}
+          </div>
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-50"><tr className="text-slate-500 font-bold"><th className="px-6 py-4 text-left">Tanggal</th><th className="px-6 py-4 text-left">Keterangan</th><th className="px-6 py-4 text-right">Debet</th><th className="px-6 py-4 text-right">Kredit</th><th className="px-6 py-4 text-right">Saldo</th></tr></thead>
+              <tbody className="divide-y divide-slate-100">
+                {bbAccount === 'pembelian' && purchases.map((p,i) => { const run = purchases.slice(0,i+1).reduce((a,x) => a+(x.total_amount||0),0); return <tr key={i} className="hover:bg-slate-50"><td className="px-6 py-3 text-slate-500">{new Date(p.date).toLocaleDateString('id-ID')}</td><td className="px-6 py-3">{p.supplier_name} — {p.item_name}</td><td className="px-6 py-3 text-right font-mono text-amber-600">{p.total_amount?.toLocaleString('id-ID')}</td><td className="px-6 py-3 text-right font-mono text-slate-400">-</td><td className="px-6 py-3 text-right font-mono font-bold">{run.toLocaleString('id-ID')}</td></tr>; })}
+                {bbAccount === 'penjualan' && sales.map((s,i) => { const run = sales.slice(0,i+1).reduce((a,x) => a+(x.total_amount||0),0); return <tr key={i} className="hover:bg-slate-50"><td className="px-6 py-3 text-slate-500">{new Date(s.date).toLocaleDateString('id-ID')}</td><td className="px-6 py-3">{s.customer_name} — {s.brand_name}</td><td className="px-6 py-3 text-right font-mono text-slate-400">-</td><td className="px-6 py-3 text-right font-mono text-emerald-600">{s.total_amount?.toLocaleString('id-ID')}</td><td className="px-6 py-3 text-right font-mono font-bold">{run.toLocaleString('id-ID')}</td></tr>; })}
+                {bbAccount === 'biaya' && expenses.map((e,i) => { const run = expenses.slice(0,i+1).reduce((a,x) => a+(x.amount||0),0); return <tr key={i} className="hover:bg-slate-50"><td className="px-6 py-3 text-slate-500">{new Date(e.date).toLocaleDateString('id-ID')}</td><td className="px-6 py-3">{e.category} — {e.description}</td><td className="px-6 py-3 text-right font-mono text-rose-600">{e.amount?.toLocaleString('id-ID')}</td><td className="px-6 py-3 text-right font-mono text-slate-400">-</td><td className="px-6 py-3 text-right font-mono font-bold">{run.toLocaleString('id-ID')}</td></tr>; })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -545,32 +648,49 @@ const OpenClawPanel = () => {
   );
 };
 
-// --- CORETAX FINANCE ERP ---
 const CoreFinancePanel = () => {
   const [tab, setTab] = useState<'laba_rugi' | 'pembelian' | 'penjualan' | 'biaya'>('laba_rugi');
   const [purchases, setPurchases] = useState<any[]>([]);
   const [sales, setSales] = useState<any[]>([]);
   const [expenses, setExpenses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [savingExpense, setSavingExpense] = useState(false);
+  const [expenseForm, setExpenseForm] = useState({ category: 'Maintenance Mesin', description: '', payment_type: 'Tunai', amount: '' });
 
-  useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      const h = { 'Authorization': `Bearer ${localStorage.getItem('jwt_token') || ''}` };
-      try {
-        const [pR, sR, eR] = await Promise.all([
-          fetch(`${API_BASE}/api/finance/purchases`, { headers: h }),
-          fetch(`${API_BASE}/api/finance/sales`, { headers: h }),
-          fetch(`${API_BASE}/api/finance/expenses`, { headers: h })
-        ]);
-        if (pR.ok) setPurchases(await pR.json());
-        if (sR.ok) setSales(await sR.json());
-        if (eR.ok) setExpenses(await eR.json());
-      } catch(e) { console.error(e); }
-      setLoading(false);
-    };
-    fetchData();
-  }, []);
+  const h = { 'Authorization': `Bearer ${localStorage.getItem('jwt_token') || ''}`, 'Content-Type': 'application/json' };
+
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const [pR, sR, eR] = await Promise.all([
+        fetch(`${API_BASE}/api/finance/purchases`, { headers: h }),
+        fetch(`${API_BASE}/api/finance/sales`, { headers: h }),
+        fetch(`${API_BASE}/api/finance/expenses`, { headers: h })
+      ]);
+      if (pR.ok) setPurchases(await pR.json());
+      if (sR.ok) setSales(await sR.json());
+      if (eR.ok) setExpenses(await eR.json());
+    } catch(e) { console.error(e); }
+    setLoading(false);
+  };
+
+  useEffect(() => { fetchData(); }, []);
+
+  const handleAddExpense = async () => {
+    if (!expenseForm.description || !expenseForm.amount) return alert('Mohon isi keterangan dan nominal.');
+    setSavingExpense(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/finance/expenses`, {
+        method: 'POST', headers: h,
+        body: JSON.stringify({ ...expenseForm, amount: parseFloat(expenseForm.amount) })
+      });
+      if (res.ok) {
+        setExpenseForm({ category: 'Maintenance Mesin', description: '', payment_type: 'Tunai', amount: '' });
+        fetchData();
+      }
+    } catch(e) { console.error(e); }
+    setSavingExpense(false);
+  };
 
   const totalPendapatan = sales.reduce((a, s) => a + (s.total_amount || 0), 0);
   const pembelianBeras = purchases.filter(p => p.item_name?.toLowerCase().includes('beras')).reduce((a, p) => a + (p.total_amount || 0), 0);
@@ -645,15 +765,63 @@ const CoreFinancePanel = () => {
         </div>
       )}
       {tab === 'biaya' && (
-        <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-x-auto">
-          <table className="w-full text-sm text-left"><thead className="bg-slate-50 text-slate-500 font-bold"><tr><th className="px-6 py-4">Tanggal</th><th className="px-6 py-4">Kategori</th><th className="px-6 py-4">Keterangan</th><th className="px-6 py-4">Tipe Bayar</th><th className="px-6 py-4 text-right">Nominal (Rp)</th></tr></thead>
-          <tbody className="divide-y divide-slate-100">{expenses.map((e, i) => (<tr key={i} className="hover:bg-slate-50"><td className="px-6 py-4 text-slate-600">{new Date(e.date).toLocaleDateString('id-ID')}</td><td className="px-6 py-4"><span className="bg-slate-100 px-2 py-1 rounded-lg text-xs font-bold">{e.category}</span></td><td className="px-6 py-4">{e.description}</td><td className="px-6 py-4">{e.payment_type}</td><td className="px-6 py-4 text-right font-mono font-bold text-rose-600">{e.amount?.toLocaleString('id-ID')}</td></tr>))}</tbody>
-          </table>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Add Expense Form */}
+          <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 space-y-4">
+            <h3 className="font-black text-slate-800 flex items-center gap-2"><Lucide.PlusCircle className="w-5 h-5 text-rose-500" /> Tambah Pengeluaran</h3>
+            <div>
+              <label className="text-xs font-black text-slate-500 uppercase tracking-widest mb-1 block">Kategori</label>
+              <select value={expenseForm.category} onChange={e => setExpenseForm({...expenseForm, category: e.target.value})} className="w-full p-3 border border-slate-200 rounded-xl font-bold text-slate-700">
+                <option>Maintenance Mesin</option>
+                <option>Pembelian Kebutuhan Maintenance</option>
+                <option>Ongkos Kuli</option>
+                <option>Ongkos Truk</option>
+                <option>PLN</option>
+                <option>PDAM</option>
+                <option>Gaji Karyawan</option>
+                <option>Perlengkapan Kantor</option>
+                <option>Lain-lain</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-black text-slate-500 uppercase tracking-widest mb-1 block">Keterangan</label>
+              <input value={expenseForm.description} onChange={e => setExpenseForm({...expenseForm, description: e.target.value})} placeholder="Contoh: Beli oli mesin, Ganti belt..." className="w-full p-3 border border-slate-200 rounded-xl text-slate-700" />
+            </div>
+            <div>
+              <label className="text-xs font-black text-slate-500 uppercase tracking-widest mb-1 block">Tipe Pembayaran</label>
+              <div className="flex gap-2">
+                {['Tunai', 'Cek', 'Transfer'].map(t => (
+                  <button key={t} onClick={() => setExpenseForm({...expenseForm, payment_type: t})} className={`flex-1 py-2 rounded-xl text-sm font-bold transition-all ${expenseForm.payment_type === t ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>{t}</button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="text-xs font-black text-slate-500 uppercase tracking-widest mb-1 block">Nominal (Rp)</label>
+              <input type="number" value={expenseForm.amount} onChange={e => setExpenseForm({...expenseForm, amount: e.target.value})} placeholder="0" className="w-full p-3 border border-slate-200 rounded-xl font-black text-slate-700 text-xl" />
+            </div>
+            <button onClick={handleAddExpense} disabled={savingExpense} className="w-full py-4 bg-rose-600 hover:bg-rose-700 text-white font-black rounded-xl transition-colors flex items-center justify-center gap-2 disabled:opacity-50">
+              {savingExpense ? <Lucide.Loader2 className="w-5 h-5 animate-spin" /> : <Lucide.Save className="w-5 h-5" />}
+              Simpan Pengeluaran
+            </button>
+          </div>
+          {/* Expense List */}
+          <div className="lg:col-span-2 bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
+            <div className="p-5 border-b border-slate-100 flex justify-between items-center">
+              <h3 className="font-black text-slate-800">Riwayat Pengeluaran</h3>
+              <span className="text-sm font-bold text-rose-600">Total: Rp {expenses.reduce((a,e) => a+(e.amount||0),0).toLocaleString('id-ID')}</span>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-left"><thead className="bg-slate-50 text-slate-500 font-bold"><tr><th className="px-5 py-4">Tanggal</th><th className="px-5 py-4">Kategori</th><th className="px-5 py-4">Keterangan</th><th className="px-5 py-4">Bayar</th><th className="px-5 py-4 text-right">Nominal</th></tr></thead>
+              <tbody className="divide-y divide-slate-100">{expenses.map((e, i) => (<tr key={i} className="hover:bg-slate-50"><td className="px-5 py-3 text-slate-500 text-xs">{new Date(e.date).toLocaleDateString('id-ID')}</td><td className="px-5 py-3"><span className="bg-slate-100 px-2 py-1 rounded-lg text-xs font-bold">{e.category}</span></td><td className="px-5 py-3 text-slate-600">{e.description}</td><td className="px-5 py-3 text-slate-500">{e.payment_type}</td><td className="px-5 py-3 text-right font-mono font-black text-rose-600">Rp {e.amount?.toLocaleString('id-ID')}</td></tr>))}</tbody>
+              </table>
+            </div>
+          </div>
         </div>
       )}
     </div>
   );
 };
+
 
 // --- PAYMENTS & REORDER PANEL ---
 const PaymentsPanel = () => {
