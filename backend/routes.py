@@ -290,3 +290,73 @@ def export_laba_rugi():
         as_attachment=True,
         mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     )
+
+# ==========================================
+# PHASE 3: PAYMENT MANAGEMENT & REORDER
+# ==========================================
+@routes_bp.route('/api/finance/purchases/<int:id>/pay', methods=['POST'])
+@jwt_required()
+def mark_purchase_paid(id):
+    purchase = Purchase.query.get_or_404(id)
+    purchase.payment_status = 'Lunas'
+    purchase.paid_at = datetime.datetime.utcnow()
+    db.session.commit()
+    # Log to OpenClaw
+    log = OpenClawLog(action="Payment Marked as Lunas", details=f"Supplier: {purchase.supplier_name} | Amount: {purchase.total_amount} | Check: {purchase.check_number}")
+    db.session.add(log)
+    db.session.commit()
+    return jsonify({'success': True, 'purchase': purchase.to_dict()})
+
+@routes_bp.route('/api/finance/purchases/<int:id>/due-date', methods=['POST'])
+@jwt_required()
+def set_due_date(id):
+    purchase = Purchase.query.get_or_404(id)
+    data = request.json
+    due_date_str = data.get('due_date')
+    if due_date_str:
+        purchase.due_date = datetime.datetime.fromisoformat(due_date_str)
+        db.session.commit()
+    return jsonify({'success': True, 'purchase': purchase.to_dict()})
+
+@routes_bp.route('/api/finance/payments/pending', methods=['GET'])
+@jwt_required()
+def get_pending_payments():
+    pending = Purchase.query.filter(Purchase.payment_status == 'DP').order_by(Purchase.due_date.asc()).all()
+    now = datetime.datetime.utcnow()
+    result = []
+    for p in pending:
+        d = p.to_dict()
+        if p.due_date:
+            delta = (p.due_date - now).days
+            d['days_until_due'] = delta
+            d['is_overdue'] = delta < 0
+            d['is_urgent'] = 0 <= delta <= 1
+        else:
+            d['days_until_due'] = None
+            d['is_overdue'] = False
+            d['is_urgent'] = False
+        result.append(d)
+    return jsonify(result)
+
+@routes_bp.route('/api/finance/reorder-suggestions', methods=['GET'])
+@jwt_required()
+def get_reorder_suggestions():
+    # Get inventory items below minimum threshold
+    low_stock = Inventory.query.filter(Inventory.quantity < Inventory.minimum_threshold).all()
+    suggestions = []
+    for item in low_stock:
+        # Find most recent supplier for this item type
+        recent_purchase = Purchase.query.filter(
+            Purchase.item_name.ilike(f'%{item.item_name}%')
+        ).order_by(Purchase.date.desc()).first()
+        suggestions.append({
+            'item_id': item.id,
+            'item_name': item.item_name,
+            'current_qty': item.quantity,
+            'minimum_threshold': item.minimum_threshold,
+            'shortage': item.minimum_threshold - item.quantity,
+            'last_supplier': recent_purchase.supplier_name if recent_purchase else 'Tidak diketahui',
+            'last_price_per_kg': recent_purchase.price_per_kg if recent_purchase else 0,
+        })
+    return jsonify(suggestions)
+

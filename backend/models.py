@@ -115,13 +115,17 @@ class Purchase(db.Model):
     total_amount = db.Column(db.Float, default=0.0)
     payment_status = db.Column(db.String(50), default='DP') # DP/Lunas
     check_number = db.Column(db.String(50))
+    due_date = db.Column(db.DateTime, nullable=True)
+    paid_at = db.Column(db.DateTime, nullable=True)
 
     def to_dict(self):
         return {
             'id': self.id, 'date': self.date.isoformat() if self.date else None, 'supplier_name': self.supplier_name,
             'item_name': self.item_name, 'qty_kg': self.qty_kg, 'price_per_kg': self.price_per_kg,
             'dpp': self.dpp, 'ppn': self.ppn, 'total_amount': self.total_amount,
-            'payment_status': self.payment_status, 'check_number': self.check_number
+            'payment_status': self.payment_status, 'check_number': self.check_number,
+            'due_date': self.due_date.isoformat() if self.due_date else None,
+            'paid_at': self.paid_at.isoformat() if self.paid_at else None
         }
 
 class Sale(db.Model):

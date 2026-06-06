@@ -86,6 +86,10 @@ const Layout = ({ children, activeTab, setActiveTab }: any) => (
           <Lucide.Terminal className="w-5 h-5" />
           <span className="font-bold text-sm">AI Audit Log</span>
         </button>
+        <button onClick={() => setActiveTab('payments')} className={`w-full flex items-center space-x-3 p-3 rounded-xl transition-all ${activeTab === 'payments' ? 'bg-emerald-600 shadow-lg' : 'hover:bg-emerald-800/50 text-emerald-100'}`}>
+          <Lucide.AlarmClock className="w-5 h-5" />
+          <span className="font-bold text-sm">Tagihan & Reorder</span>
+        </button>
       </nav>
       <div className="p-4 bg-emerald-950/50 border-t border-emerald-800 text-[10px] text-emerald-500 font-bold uppercase tracking-widest">
         Integrated Rice System
@@ -651,6 +655,177 @@ const CoreFinancePanel = () => {
   );
 };
 
+// --- PAYMENTS & REORDER PANEL ---
+const PaymentsPanel = () => {
+  const [payments, setPayments] = useState<any[]>([]);
+  const [reorders, setReorders] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [paying, setPaying] = useState<number | null>(null);
+  const [dueDateModal, setDueDateModal] = useState<any>(null);
+  const [dueDateInput, setDueDateInput] = useState('');
+
+  const headers = { 'Authorization': `Bearer ${localStorage.getItem('jwt_token') || ''}`, 'Content-Type': 'application/json' };
+
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const [pRes, rRes] = await Promise.all([
+        fetch(`${API_BASE}/api/finance/payments/pending`, { headers }),
+        fetch(`${API_BASE}/api/finance/reorder-suggestions`, { headers })
+      ]);
+      if (pRes.ok) setPayments(await pRes.json());
+      if (rRes.ok) setReorders(await rRes.json());
+    } catch(e) { console.error(e); }
+    setLoading(false);
+  };
+
+  useEffect(() => { fetchData(); }, []);
+
+  const handleMarkPaid = async (id: number) => {
+    setPaying(id);
+    try {
+      const res = await fetch(`${API_BASE}/api/finance/purchases/${id}/pay`, { method: 'POST', headers });
+      if (res.ok) { setPayments(prev => prev.filter(p => p.id !== id)); }
+    } catch(e) { console.error(e); }
+    setPaying(null);
+  };
+
+  const handleSetDueDate = async () => {
+    if (!dueDateModal || !dueDateInput) return;
+    try {
+      await fetch(`${API_BASE}/api/finance/purchases/${dueDateModal.id}/due-date`, {
+        method: 'POST', headers, body: JSON.stringify({ due_date: dueDateInput })
+      });
+      setDueDateModal(null);
+      fetchData();
+    } catch(e) { console.error(e); }
+  };
+
+  const totalTagihan = payments.reduce((a, p) => a + (p.total_amount || 0), 0);
+  const overdueCount = payments.filter(p => p.is_overdue).length;
+  const urgentCount = payments.filter(p => p.is_urgent && !p.is_overdue).length;
+
+  if (loading) return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div></div>;
+
+  return (
+    <div className="space-y-8 animate-fade-in">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <h2 className="text-3xl font-black text-slate-800 flex items-center"><Lucide.AlarmClock className="w-8 h-8 mr-3 text-rose-500" />Tagihan & Reorder</h2>
+          <p className="text-slate-500 mt-1">Kelola pembayaran ke supplier & saran restok barang</p>
+        </div>
+        <button onClick={fetchData} className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-colors">
+          <Lucide.RefreshCw className="w-4 h-4" /> Refresh
+        </button>
+      </div>
+
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm">
+          <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Total Tagihan Belum Bayar</p>
+          <p className="text-3xl font-black text-slate-800">Rp {totalTagihan.toLocaleString('id-ID')}</p>
+          <p className="text-sm text-slate-500 mt-1">{payments.length} transaksi belum lunas</p>
+        </div>
+        <div className={`rounded-3xl border p-6 shadow-sm ${overdueCount > 0 ? 'bg-red-50 border-red-200' : 'bg-white border-slate-200'}`}>
+          <p className="text-xs font-black text-red-400 uppercase tracking-widest mb-1">Sudah Lewat Jatuh Tempo</p>
+          <p className="text-3xl font-black text-red-600">{overdueCount} Tagihan</p>
+          <p className="text-sm text-red-400 mt-1">Segera bayar!</p>
+        </div>
+        <div className={`rounded-3xl border p-6 shadow-sm ${urgentCount > 0 ? 'bg-amber-50 border-amber-200' : 'bg-white border-slate-200'}`}>
+          <p className="text-xs font-black text-amber-500 uppercase tracking-widest mb-1">Jatuh Tempo H-1</p>
+          <p className="text-3xl font-black text-amber-600">{urgentCount} Tagihan</p>
+          <p className="text-sm text-amber-400 mt-1">Bayar hari ini atau besok</p>
+        </div>
+      </div>
+
+      {/* Pending Payments List */}
+      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="p-6 border-b border-slate-100 flex items-center gap-2">
+          <Lucide.CreditCard className="w-5 h-5 text-rose-500" />
+          <h3 className="font-black text-slate-800">Daftar Tagihan Belum Lunas</h3>
+        </div>
+        <div className="divide-y divide-slate-100">
+          {payments.length === 0 && <div className="p-12 text-center text-slate-400 font-medium">✅ Semua tagihan sudah lunas!</div>}
+          {payments.map(p => (
+            <div key={p.id} className={`p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-slate-50 transition-colors ${p.is_overdue ? 'bg-red-50/50' : p.is_urgent ? 'bg-amber-50/50' : ''}`}>
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="font-black text-slate-800 text-lg">{p.supplier_name}</span>
+                  {p.is_overdue && <span className="px-2 py-0.5 bg-red-100 text-red-600 text-xs font-black rounded-full">LEWAT TEMPO</span>}
+                  {p.is_urgent && !p.is_overdue && <span className="px-2 py-0.5 bg-amber-100 text-amber-600 text-xs font-black rounded-full">H-1</span>}
+                </div>
+                <p className="text-sm text-slate-500">{p.item_name} • {p.qty_kg?.toLocaleString('id-ID')} kg • Cek: {p.check_number || '-'}</p>
+                <p className="text-xs text-slate-400 mt-1">
+                  Jatuh Tempo: {p.due_date ? new Date(p.due_date).toLocaleDateString('id-ID', {day:'numeric',month:'long',year:'numeric'}) : <span className="italic">Belum diset</span>}
+                  {p.days_until_due !== null && p.days_until_due !== undefined && (
+                    <span className={`ml-2 font-bold ${p.is_overdue ? 'text-red-500' : p.is_urgent ? 'text-amber-500' : 'text-slate-500'}`}>
+                      ({p.is_overdue ? `${Math.abs(p.days_until_due)} hari lewat` : `${p.days_until_due} hari lagi`})
+                    </span>
+                  )}
+                </p>
+              </div>
+              <div className="flex items-center gap-3 flex-shrink-0">
+                <span className="text-xl font-black text-slate-800 font-mono">Rp {p.total_amount?.toLocaleString('id-ID')}</span>
+                <button onClick={() => { setDueDateModal(p); setDueDateInput(''); }} className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs rounded-xl transition-colors">
+                  📅 Set Jatuh Tempo
+                </button>
+                <button
+                  onClick={() => handleMarkPaid(p.id)}
+                  disabled={paying === p.id}
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition-colors flex items-center gap-2 disabled:opacity-50"
+                >
+                  {paying === p.id ? <Lucide.Loader2 className="w-4 h-4 animate-spin" /> : <Lucide.CheckCircle2 className="w-4 h-4" />}
+                  Tandai Lunas
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Reorder Suggestions */}
+      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="p-6 border-b border-slate-100 flex items-center gap-2">
+          <Lucide.PackageSearch className="w-5 h-5 text-blue-500" />
+          <h3 className="font-black text-slate-800">Saran Reorder Barang</h3>
+        </div>
+        <div className="divide-y divide-slate-100">
+          {reorders.length === 0 && <div className="p-12 text-center text-slate-400 font-medium">✅ Semua stok masih aman!</div>}
+          {reorders.map((r, i) => (
+            <div key={i} className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-blue-50/30 hover:bg-blue-50 transition-colors">
+              <div>
+                <p className="font-black text-slate-800 text-lg">{r.item_name}</p>
+                <p className="text-sm text-slate-500">Stok saat ini: <strong className="text-red-600">{r.current_qty?.toLocaleString('id-ID')} kg</strong> • Min threshold: {r.minimum_threshold?.toLocaleString('id-ID')} kg</p>
+                <p className="text-xs text-blue-600 mt-1 font-bold">Supplier terakhir: {r.last_supplier} — Harga: Rp {r.last_price_per_kg?.toLocaleString('id-ID')}/kg</p>
+              </div>
+              <div className="flex-shrink-0 text-right">
+                <p className="text-xs text-slate-400 uppercase font-bold">Kekurangan</p>
+                <p className="text-2xl font-black text-blue-600">{r.shortage?.toLocaleString('id-ID')} kg</p>
+                <p className="text-xs text-slate-500 mt-1">Est. biaya: Rp {(r.shortage * r.last_price_per_kg)?.toLocaleString('id-ID')}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Due Date Modal */}
+      {dueDateModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl p-8 w-full max-w-md shadow-2xl">
+            <h3 className="font-black text-slate-800 text-xl mb-2">Set Jatuh Tempo</h3>
+            <p className="text-slate-500 mb-6">{dueDateModal.supplier_name} — Rp {dueDateModal.total_amount?.toLocaleString('id-ID')}</p>
+            <input type="date" value={dueDateInput} onChange={e => setDueDateInput(e.target.value)} className="w-full p-4 border border-slate-200 rounded-2xl font-bold text-slate-800 mb-4" />
+            <div className="flex gap-3">
+              <button onClick={() => setDueDateModal(null)} className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-xl">Batal</button>
+              <button onClick={handleSetDueDate} className="flex-1 py-3 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl">Simpan</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 // --- MAIN APP ---
 function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -671,6 +846,7 @@ function App() {
       {activeTab === 'accounting' && <AccountingPanel state={state} />}
       {activeTab === 'core_finance' && <CoreFinancePanel />}
       {activeTab === 'openclaw' && <OpenClawPanel />}
+      {activeTab === 'payments' && <PaymentsPanel />}
     </Layout>
   );
 }
