@@ -313,7 +313,7 @@ function createWindow() {
                 }
 
                 const apiKey = 'AIzaSyB-DbaU8nGkxWRb0ruBRaZYpiTlFQU1q3g';
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
 
                 const requestBody = {
                     contents: [
@@ -378,11 +378,11 @@ function createWindow() {
                         plate: plate,
                         score: 0.99,
                         method: "Gemini-1.5-Flash",
-                        model: "gemini-1.5-flash"
+                        model: "gemini-2.5-flash"
                     });
                 } else {
                     sendLog(`Gemini AI: Tidak ada plat yang ditemukan.`);
-                    resolve({ success: false, error: 'No plate recognized in image.', engine: 'Gemini-1.5-Flash' });
+                    resolve({ success: false, error: 'No plate recognized in image.', engine: 'Gemini-2.5-Flash' });
                 }
             } catch (err) {
                 sendLog(`Gemini AI Error: ${err.message}`);
