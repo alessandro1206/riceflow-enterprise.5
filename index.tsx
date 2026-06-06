@@ -50,52 +50,62 @@ const fCurrency = (num: number) => new Intl.NumberFormat('id-ID', { style: 'curr
 
 // --- LAYOUT ---
 const Layout = ({ children, activeTab, setActiveTab }: any) => (
-  <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row font-sans">
-    <aside className="w-full md:w-64 bg-emerald-900 text-white flex flex-col shadow-2xl z-50">
-      <div className="p-6 bg-emerald-950 flex items-center space-x-3 border-b border-emerald-800">
-        <Lucide.Wheat className="text-yellow-400 w-8 h-8" />
+  <div className="min-h-screen bg-[#f4f7f6] flex flex-col md:flex-row font-sans selection:bg-emerald-200">
+    <aside className="w-full md:w-72 bg-white/80 backdrop-blur-xl border-r border-slate-200 text-slate-800 flex flex-col z-50 soft-shadow">
+      <div className="p-8 flex items-center space-x-4 border-b border-slate-100">
+        <div className="bg-gradient-to-br from-emerald-400 to-emerald-600 p-2.5 rounded-2xl shadow-lg shadow-emerald-200">
+          <Lucide.Wheat className="text-white w-7 h-7" />
+        </div>
         <div>
-          <h1 className="font-black text-xl tracking-tight">RiceFlow</h1>
-          <p className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest text-center">BUMI MAS GROUP</p>
+          <h1 className="font-black text-2xl tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-emerald-900 to-emerald-600">RiceFlow</h1>
+          <p className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.2em]">BUMI MAS GROUP</p>
         </div>
       </div>
-      <nav className="flex-1 p-4 space-y-1.5 overflow-y-auto">
-        <button onClick={() => setActiveTab('dashboard')} className={`w-full flex items-center space-x-3 p-3 rounded-xl transition-all ${activeTab === 'dashboard' ? 'bg-emerald-600 shadow-lg' : 'hover:bg-emerald-800/50 text-emerald-100'}`}>
+      <nav className="flex-1 p-5 space-y-2 overflow-y-auto custom-scrollbar">
+        <button onClick={() => setActiveTab('dashboard')} className={`w-full flex items-center space-x-3 p-3.5 rounded-2xl transition-all font-bold text-sm ${activeTab === 'dashboard' ? 'bg-emerald-50 text-emerald-700 shadow-sm border border-emerald-100' : 'hover:bg-slate-50 text-slate-500 hover:text-slate-800'}`}>
           <Lucide.LayoutDashboard className="w-5 h-5" />
-          <span className="font-bold text-sm">Dashboard</span>
+          <span>Dashboard</span>
         </button>
-        <div className="pt-6 pb-2 px-3 text-[10px] font-black text-emerald-500 uppercase tracking-widest">Operasional</div>
-        <button onClick={() => setActiveTab('production')} className={`w-full flex items-center space-x-3 p-3 rounded-xl transition-all ${activeTab === 'production' ? 'bg-emerald-600 shadow-lg' : 'hover:bg-emerald-800/50 text-emerald-100'}`}>
+        <div className="pt-8 pb-3 px-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Operasional</div>
+        <button onClick={() => setActiveTab('production')} className={`w-full flex items-center space-x-3 p-3.5 rounded-2xl transition-all font-bold text-sm ${activeTab === 'production' ? 'bg-emerald-50 text-emerald-700 shadow-sm border border-emerald-100' : 'hover:bg-slate-50 text-slate-500 hover:text-slate-800'}`}>
           <Lucide.Building2 className="w-5 h-5" />
-          <span className="font-bold text-sm">PP BUMI MAS</span>
+          <span>PP BUMI MAS</span>
         </button>
-        <button onClick={() => setActiveTab('trading')} className={`w-full flex items-center space-x-3 p-3 rounded-xl transition-all ${activeTab === 'trading' ? 'bg-emerald-600 shadow-lg' : 'hover:bg-emerald-800/50 text-emerald-100'}`}>
+        <button onClick={() => setActiveTab('trading')} className={`w-full flex items-center space-x-3 p-3.5 rounded-2xl transition-all font-bold text-sm ${activeTab === 'trading' ? 'bg-emerald-50 text-emerald-700 shadow-sm border border-emerald-100' : 'hover:bg-slate-50 text-slate-500 hover:text-slate-800'}`}>
           <Lucide.ShoppingCart className="w-5 h-5" />
-          <span className="font-bold text-sm">Penjualan</span>
+          <span>Penjualan</span>
         </button>
-        <button onClick={() => setActiveTab('accounting')} className={`w-full flex items-center space-x-3 p-3 rounded-xl transition-all ${activeTab === 'accounting' ? 'bg-emerald-600 shadow-lg' : 'hover:bg-emerald-800/50 text-emerald-100'}`}>
+        <button onClick={() => setActiveTab('accounting')} className={`w-full flex items-center space-x-3 p-3.5 rounded-2xl transition-all font-bold text-sm ${activeTab === 'accounting' ? 'bg-emerald-50 text-emerald-700 shadow-sm border border-emerald-100' : 'hover:bg-slate-50 text-slate-500 hover:text-slate-800'}`}>
           <Lucide.BookOpen className="w-5 h-5" />
-          <span className="font-bold text-sm">Pusat Akuntansi</span>
+          <span>Pusat Akuntansi</span>
         </button>
-        <div className="pt-6 pb-2 px-3 text-[10px] font-black text-emerald-500 uppercase tracking-widest">Keuangan & AI</div>
-        <button onClick={() => setActiveTab('core_finance')} className={`w-full flex items-center space-x-3 p-3 rounded-xl transition-all ${activeTab === 'core_finance' ? 'bg-emerald-600 shadow-lg' : 'hover:bg-emerald-800/50 text-emerald-100'}`}>
+        <div className="pt-8 pb-3 px-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Keuangan & AI</div>
+        <button onClick={() => setActiveTab('core_finance')} className={`w-full flex items-center space-x-3 p-3.5 rounded-2xl transition-all font-bold text-sm ${activeTab === 'core_finance' ? 'bg-emerald-50 text-emerald-700 shadow-sm border border-emerald-100' : 'hover:bg-slate-50 text-slate-500 hover:text-slate-800'}`}>
           <Lucide.Banknote className="w-5 h-5" />
-          <span className="font-bold text-sm">CoreTax Finance</span>
+          <span>CoreTax Finance</span>
         </button>
-        <button onClick={() => setActiveTab('openclaw')} className={`w-full flex items-center space-x-3 p-3 rounded-xl transition-all ${activeTab === 'openclaw' ? 'bg-emerald-600 shadow-lg' : 'hover:bg-emerald-800/50 text-emerald-100'}`}>
+        <button onClick={() => setActiveTab('openclaw')} className={`w-full flex items-center space-x-3 p-3.5 rounded-2xl transition-all font-bold text-sm ${activeTab === 'openclaw' ? 'bg-emerald-50 text-emerald-700 shadow-sm border border-emerald-100' : 'hover:bg-slate-50 text-slate-500 hover:text-slate-800'}`}>
           <Lucide.Terminal className="w-5 h-5" />
-          <span className="font-bold text-sm">AI Audit Log</span>
+          <span>AI Audit Log</span>
         </button>
-        <button onClick={() => setActiveTab('payments')} className={`w-full flex items-center space-x-3 p-3 rounded-xl transition-all ${activeTab === 'payments' ? 'bg-emerald-600 shadow-lg' : 'hover:bg-emerald-800/50 text-emerald-100'}`}>
+        <button onClick={() => setActiveTab('payments')} className={`w-full flex items-center space-x-3 p-3.5 rounded-2xl transition-all font-bold text-sm ${activeTab === 'payments' ? 'bg-emerald-50 text-emerald-700 shadow-sm border border-emerald-100' : 'hover:bg-slate-50 text-slate-500 hover:text-slate-800'}`}>
           <Lucide.AlarmClock className="w-5 h-5" />
-          <span className="font-bold text-sm">Tagihan & Reorder</span>
+          <span>Tagihan & Reorder</span>
         </button>
       </nav>
-      <div className="p-4 bg-emerald-950/50 border-t border-emerald-800 text-[10px] text-emerald-500 font-bold uppercase tracking-widest">
-        Integrated Rice System
+      <div className="p-6 bg-slate-50/80 backdrop-blur-md border-t border-slate-100">
+         <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 bg-slate-200 rounded-full border-2 border-white shadow-sm overflow-hidden flex items-center justify-center">
+               <Lucide.User className="w-5 h-5 text-slate-500" />
+            </div>
+            <div>
+               <p className="font-bold text-sm text-slate-800">Admin Utama</p>
+               <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Online</p>
+            </div>
+         </div>
       </div>
     </aside>
-    <main className="flex-1 overflow-y-auto h-screen p-4 md:p-8">{children}</main>
+    <main className="flex-1 overflow-y-auto h-screen p-4 md:p-10">{children}</main>
   </div>
 );
 
@@ -118,26 +128,26 @@ const Dashboard = ({ state }: any) => {
     .reduce((acc: number, a: any) => acc + Math.abs(getBalance(a.code)), 0);
 
   const stats = [
-    { label: 'Kas & Bank', value: fCurrency(getBalance('11001')), icon: <Lucide.Wallet className="text-blue-500" /> },
-    { label: 'Piutang Jual', value: fCurrency(getBalance('13001')), icon: <Lucide.ArrowUpCircle className="text-emerald-500" /> },
-    { label: 'Total Gabah', value: `${(totalGabah/1000).toFixed(1)} Ton`, icon: <Lucide.Layers className="text-amber-500" /> },
-    { label: 'Stok Beras', value: `${(totalBeras/1000).toFixed(1)} Ton`, icon: <Lucide.Package className="text-indigo-500" /> }
+    { label: 'Kas & Bank', value: fCurrency(getBalance('11001')), icon: <Lucide.Wallet className="text-blue-500 w-6 h-6" /> },
+    { label: 'Piutang Jual', value: fCurrency(getBalance('13001')), icon: <Lucide.ArrowUpCircle className="text-emerald-500 w-6 h-6" /> },
+    { label: 'Total Gabah', value: `${(totalGabah/1000).toFixed(1)} Ton`, icon: <Lucide.Layers className="text-amber-500 w-6 h-6" /> },
+    { label: 'Stok Beras', value: `${(totalBeras/1000).toFixed(1)} Ton`, icon: <Lucide.Package className="text-indigo-500 w-6 h-6" /> }
   ];
 
   return (
-    <div className="space-y-8 animate-fade-in">
-      <header>
-        <h2 className="text-3xl font-black text-slate-800">Manajemen RiceFlow</h2>
-        <p className="text-slate-500">Monitoring Multicompany</p>
+    <div className="space-y-8">
+      <header className="animate-fade-up">
+        <h2 className="text-3xl font-black text-slate-800 tracking-tight">Manajemen RiceFlow</h2>
+        <p className="text-sm font-bold text-slate-500 mt-1">Monitoring Multicompany Real-time</p>
       </header>
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         {stats.map((s, i) => (
-          <div key={i} className="bg-white p-6 rounded-3xl border shadow-sm flex items-center justify-between">
+          <div key={i} className={`bg-white p-6 rounded-3xl border border-slate-100 soft-shadow hover-lift flex items-center justify-between stagger-${(i%3)+1} animate-fade-up`}>
             <div>
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{s.label}</p>
-              <p className="text-xl font-black text-slate-800">{s.value}</p>
+              <p className="text-2xl font-black text-slate-800 tracking-tight">{s.value}</p>
             </div>
-            <div className="p-3 bg-slate-50 rounded-2xl">{s.icon}</div>
+            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">{s.icon}</div>
           </div>
         ))}
       </div>
@@ -439,21 +449,21 @@ const ProductionPanel = ({ state, setState }: any) => {
        )}
 
        {tab === 'stok' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 animate-fade-in">
-             {state.piles.map((p: any) => (
-               <div key={p.id} className="bg-white p-6 rounded-3xl border shadow-sm text-center">
-                  <p className="text-[10px] font-black text-slate-400 uppercase">Pile {p.id}</p>
-                  <p className="text-2xl font-black text-slate-800">{p.currentWeight.toLocaleString()} <small className="text-xs">kg</small></p>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+             {state.piles.map((p: any, i: number) => (
+               <div key={p.id} className={`bg-white p-6 rounded-3xl border border-slate-100 soft-shadow hover-lift text-center stagger-${(i%3)+1} animate-fade-up`}>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Pile {p.id}</p>
+                  <p className="text-3xl font-black text-slate-800 mt-2">{p.currentWeight.toLocaleString()} <small className="text-sm font-bold text-slate-400">kg</small></p>
                </div>
              ))}
-             {state.inventory.map((i: any) => (
-               <div key={i.id} className="bg-white p-6 rounded-3xl border shadow-sm text-center border-indigo-100">
-                  <p className="text-[10px] font-black text-indigo-400 uppercase">{i.name}</p>
-                  <p className="text-2xl font-black text-indigo-800">{i.quantity.toLocaleString()} <small className="text-xs">kg</small></p>
+             {state.inventory.map((i: any, idx: number) => (
+               <div key={i.id} className={`bg-gradient-to-b from-indigo-50/50 to-white p-6 rounded-3xl border border-indigo-100 soft-shadow hover-lift text-center stagger-${(idx%3)+1} animate-fade-up`}>
+                  <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">{i.name}</p>
+                  <p className="text-3xl font-black text-indigo-900 mt-2">{i.quantity.toLocaleString()} <small className="text-sm font-bold text-indigo-400">kg</small></p>
                </div>
              ))}
           </div>
-       )}
+        )}
     </div>
   );
 };
@@ -729,16 +739,16 @@ const AccountingPanel = ({ state }: any) => {
             </div>
           </div>
           {/* Summary */}
-          <div className="md:col-span-2 grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="md:col-span-2 grid grid-cols-2 md:grid-cols-4 gap-6">
             {[
               {label:'Total Penjualan', val: totalPendapatan, color:'emerald'},
               {label:'Total Pembelian', val: totalPembelian, color:'amber'},
               {label:'Total Biaya', val: totalBiaya, color:'rose'},
               {label:'Laba Bersih', val: labaBersih, color: labaBersih>=0?'blue':'red'},
             ].map((s,i) => (
-              <div key={i} className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
-                <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">{s.label}</p>
-                <p className={`text-xl font-black text-${s.color}-600 font-mono`}>Rp {s.val.toLocaleString('id-ID')}</p>
+              <div key={i} className={`bg-gradient-to-br from-white to-slate-50/50 rounded-3xl border border-slate-100 p-6 soft-shadow hover-lift stagger-${(i%3)+1} animate-fade-up`}>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">{s.label}</p>
+                <p className={`text-2xl font-black text-${s.color}-600 font-mono tracking-tighter`}>Rp {s.val.toLocaleString('id-ID')}</p>
               </div>
             ))}
           </div>
@@ -1045,11 +1055,11 @@ const CoreFinancePanel = () => {
                 <input type="date" value={purchaseForm.due_date} onChange={e => setPurchaseForm({...purchaseForm, due_date: e.target.value})} className="w-full p-3 border border-amber-200 bg-amber-50 rounded-xl font-bold" />
               </div>
             )}
-            <button onClick={handleAddPurchase} className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl transition-colors">SIMPAN PEMBELIAN</button>
+            <button onClick={handleAddPurchase} className="w-full py-4 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-black rounded-xl transition-all shadow-lg shadow-emerald-200 click-squish">SIMPAN PEMBELIAN</button>
           </div>
-          <div className="lg:col-span-2 bg-white rounded-3xl shadow-sm border border-slate-200 overflow-x-auto">
-            <table className="w-full text-sm text-left"><thead className="bg-slate-50 text-slate-500 font-bold"><tr><th className="px-6 py-4">Tanggal</th><th className="px-6 py-4">Supplier</th><th className="px-6 py-4">Barang</th><th className="px-6 py-4">Qty KG</th><th className="px-6 py-4">Status</th><th className="px-6 py-4 text-right">Total (Rp)</th></tr></thead>
-            <tbody className="divide-y divide-slate-100">{safePurchases.map((p, i) => (<tr key={i} className="hover:bg-slate-50"><td className="px-6 py-4 text-slate-600">{new Date(p.date || Date.now()).toLocaleDateString('id-ID')}</td><td className="px-6 py-4 font-bold">{p.supplier_name || '-'}</td><td className="px-6 py-4">{p.item_name || '-'}</td><td className="px-6 py-4">{Number(p.qty_kg || 0).toLocaleString('id-ID')}</td><td className="px-6 py-4"><span className={`px-2 py-1 rounded-lg text-xs font-bold ${p.payment_status === 'Lunas' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>{p.payment_status || 'DP'}</span></td><td className="px-6 py-4 text-right font-mono font-bold">{Number(p.total_amount || 0).toLocaleString('id-ID')}</td></tr>))}</tbody>
+          <div className="lg:col-span-2 bg-transparent overflow-x-auto p-1">
+            <table className="w-full text-sm text-left border-separate border-spacing-y-3"><thead className="text-slate-400 font-bold text-xs uppercase tracking-widest"><tr><th className="px-6 py-2">Tanggal</th><th className="px-6 py-2">Supplier</th><th className="px-6 py-2">Barang</th><th className="px-6 py-2">Qty KG</th><th className="px-6 py-2">Status</th><th className="px-6 py-2 text-right">Total (Rp)</th></tr></thead>
+            <tbody>{safePurchases.map((p, i) => (<tr key={i} className="bg-white hover:bg-slate-50/80 transition-colors shadow-sm rounded-2xl group"><td className="px-6 py-5 text-slate-500 rounded-l-2xl">{new Date(p.date || Date.now()).toLocaleDateString('id-ID')}</td><td className="px-6 py-5 font-bold text-slate-800">{p.supplier_name || '-'}</td><td className="px-6 py-5 text-slate-600">{p.item_name || '-'}</td><td className="px-6 py-5 font-bold text-slate-700">{Number(p.qty_kg || 0).toLocaleString('id-ID')}</td><td className="px-6 py-5"><span className={`px-3 py-1.5 rounded-xl text-xs font-black ${p.payment_status === 'Lunas' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>{p.payment_status || 'DP'}</span></td><td className="px-6 py-5 text-right font-mono font-black text-slate-800 rounded-r-2xl">{Number(p.total_amount || 0).toLocaleString('id-ID')}</td></tr>))}</tbody>
             </table>
           </div>
         </div>
@@ -1097,11 +1107,11 @@ const CoreFinancePanel = () => {
                 <input type="date" value={saleForm.due_date} onChange={e => setSaleForm({...saleForm, due_date: e.target.value})} className="w-full p-3 border border-amber-200 bg-amber-50 rounded-xl font-bold" />
               </div>
             )}
-            <button onClick={handleAddSale} className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-xl transition-colors">SIMPAN PENJUALAN</button>
+            <button onClick={handleAddSale} className="w-full py-4 bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white font-black rounded-xl transition-all shadow-lg shadow-indigo-200 click-squish">SIMPAN PENJUALAN</button>
           </div>
-          <div className="lg:col-span-2 bg-white rounded-3xl shadow-sm border border-slate-200 overflow-x-auto">
-            <table className="w-full text-sm text-left"><thead className="bg-slate-50 text-slate-500 font-bold"><tr><th className="px-6 py-4">Tanggal</th><th className="px-6 py-4">Customer</th><th className="px-6 py-4">Brand</th><th className="px-6 py-4">Qty Zak</th><th className="px-6 py-4 text-right">Total (Rp)</th></tr></thead>
-            <tbody className="divide-y divide-slate-100">{safeSales.map((s, i) => (<tr key={i} className="hover:bg-slate-50"><td className="px-6 py-4 text-slate-600">{new Date(s.date || Date.now()).toLocaleDateString('id-ID')}</td><td className="px-6 py-4 font-bold">{s.customer_name || '-'}</td><td className="px-6 py-4">{s.brand_name || '-'}</td><td className="px-6 py-4">{s.qty_zak || 0}</td><td className="px-6 py-4 text-right font-mono font-bold">{Number(s.total_amount || 0).toLocaleString('id-ID')}</td></tr>))}</tbody>
+          <div className="lg:col-span-2 bg-transparent overflow-x-auto p-1">
+            <table className="w-full text-sm text-left border-separate border-spacing-y-3"><thead className="text-slate-400 font-bold text-xs uppercase tracking-widest"><tr><th className="px-6 py-2">Tanggal</th><th className="px-6 py-2">Customer</th><th className="px-6 py-2">Brand</th><th className="px-6 py-2">Qty Zak</th><th className="px-6 py-2 text-right">Total (Rp)</th></tr></thead>
+            <tbody>{safeSales.map((s, i) => (<tr key={i} className="bg-white hover:bg-slate-50/80 transition-colors shadow-sm rounded-2xl group"><td className="px-6 py-5 text-slate-500 rounded-l-2xl">{new Date(s.date || Date.now()).toLocaleDateString('id-ID')}</td><td className="px-6 py-5 font-bold text-slate-800">{s.customer_name || '-'}</td><td className="px-6 py-5 text-slate-600">{s.brand_name || '-'}</td><td className="px-6 py-5 font-bold text-slate-700">{s.qty_zak || 0}</td><td className="px-6 py-5 text-right font-mono font-black text-slate-800 rounded-r-2xl">{Number(s.total_amount || 0).toLocaleString('id-ID')}</td></tr>))}</tbody>
             </table>
           </div>
         </div>
@@ -1141,20 +1151,20 @@ const CoreFinancePanel = () => {
               <label className="text-xs font-black text-slate-500 uppercase tracking-widest mb-1 block">Nominal (Rp)</label>
               <input type="number" value={expenseForm.amount} onChange={e => setExpenseForm({...expenseForm, amount: e.target.value})} placeholder="0" className="w-full p-3 border border-slate-200 rounded-xl font-black text-slate-700 text-xl" />
             </div>
-            <button onClick={handleAddExpense} disabled={savingExpense} className="w-full py-4 bg-rose-600 hover:bg-rose-700 text-white font-black rounded-xl transition-colors flex items-center justify-center gap-2 disabled:opacity-50">
+            <button onClick={handleAddExpense} disabled={savingExpense} className="w-full py-4 bg-gradient-to-r from-rose-500 to-rose-600 hover:from-rose-600 hover:to-rose-700 text-white font-black rounded-xl transition-all shadow-lg shadow-rose-200 click-squish flex items-center justify-center gap-2 disabled:opacity-50">
               {savingExpense ? <Lucide.Loader2 className="w-5 h-5 animate-spin" /> : <Lucide.Save className="w-5 h-5" />}
               Simpan Pengeluaran
             </button>
           </div>
           {/* Expense List */}
-          <div className="lg:col-span-2 bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
-            <div className="p-5 border-b border-slate-100 flex justify-between items-center">
-              <h3 className="font-black text-slate-800">Riwayat Pengeluaran</h3>
-              <span className="text-sm font-bold text-rose-600">Total: Rp {expenses.reduce((a,e) => a+(e.amount||0),0).toLocaleString('id-ID')}</span>
+          <div className="lg:col-span-2 bg-transparent">
+            <div className="mb-4 flex justify-between items-center px-2">
+              <h3 className="font-black text-slate-800 text-lg">Riwayat Pengeluaran</h3>
+              <span className="px-4 py-2 bg-rose-100 text-rose-700 rounded-xl font-black text-sm">Total: Rp {expenses.reduce((a,e) => a+(e.amount||0),0).toLocaleString('id-ID')}</span>
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm text-left"><thead className="bg-slate-50 text-slate-500 font-bold"><tr><th className="px-5 py-4">Tanggal</th><th className="px-5 py-4">Kategori</th><th className="px-5 py-4">Keterangan</th><th className="px-5 py-4">Bayar</th><th className="px-5 py-4 text-right">Nominal</th></tr></thead>
-              <tbody className="divide-y divide-slate-100">{expenses.map((e, i) => (<tr key={i} className="hover:bg-slate-50"><td className="px-5 py-3 text-slate-500 text-xs">{new Date(e.date).toLocaleDateString('id-ID')}</td><td className="px-5 py-3"><span className="bg-slate-100 px-2 py-1 rounded-lg text-xs font-bold">{e.category}</span></td><td className="px-5 py-3 text-slate-600">{e.description}</td><td className="px-5 py-3 text-slate-500">{e.payment_type}</td><td className="px-5 py-3 text-right font-mono font-black text-rose-600">Rp {e.amount?.toLocaleString('id-ID')}</td></tr>))}</tbody>
+            <div className="overflow-x-auto p-1">
+              <table className="w-full text-sm text-left border-separate border-spacing-y-3"><thead className="text-slate-400 font-bold text-xs uppercase tracking-widest"><tr><th className="px-6 py-2">Tanggal</th><th className="px-6 py-2">Kategori</th><th className="px-6 py-2">Keterangan</th><th className="px-6 py-2">Bayar</th><th className="px-6 py-2 text-right">Nominal</th></tr></thead>
+              <tbody>{expenses.map((e, i) => (<tr key={i} className="bg-white hover:bg-slate-50/80 transition-colors shadow-sm rounded-2xl group"><td className="px-6 py-5 text-slate-500 text-xs rounded-l-2xl">{new Date(e.date).toLocaleDateString('id-ID')}</td><td className="px-6 py-5"><span className="bg-slate-100 px-3 py-1.5 rounded-xl text-xs font-black text-slate-700">{e.category}</span></td><td className="px-6 py-5 text-slate-600 font-medium">{e.description}</td><td className="px-6 py-5 text-slate-500 font-bold">{e.payment_type}</td><td className="px-6 py-5 text-right font-mono font-black text-rose-600 rounded-r-2xl">Rp {e.amount?.toLocaleString('id-ID')}</td></tr>))}</tbody>
               </table>
             </div>
           </div>
