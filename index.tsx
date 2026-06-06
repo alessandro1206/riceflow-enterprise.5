@@ -956,7 +956,7 @@ const CoreFinancePanel = () => {
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div><h2 className="text-3xl font-black text-slate-800 flex items-center"><Lucide.BarChart3 className="w-8 h-8 mr-3 text-emerald-600" />CoreTax Finance ERP</h2><p className="text-slate-500 mt-1">Sistem Keuangan SAK & Pelaporan Pajak CoreTax</p></div>
+        <div><h2 className="text-3xl font-black text-slate-800 flex items-center"><Lucide.BarChart className="w-8 h-8 mr-3 text-emerald-600" />CoreTax Finance ERP</h2><p className="text-slate-500 mt-1">Sistem Keuangan SAK & Pelaporan Pajak CoreTax</p></div>
       </div>
       <div className="flex gap-2 overflow-x-auto pb-2">
         {([['laba_rugi','Laba Rugi (Live)'],['pembelian','Buku Pembelian'],['penjualan','Buku Penjualan'],['biaya','Buku Biaya']] as const).map(([id,label]) => (
@@ -975,7 +975,7 @@ const CoreFinancePanel = () => {
             <div className="p-6 border-b border-slate-100 flex justify-between items-center">
               <h3 className="text-lg font-black text-slate-800 flex items-center"><Lucide.Calculator className="w-5 h-5 mr-2 text-slate-400" /> Rincian Laba Rugi (SAK)</h3>
               <button onClick={() => window.open(`${API_BASE}/api/finance/export/laba-rugi`, '_blank')} className="flex items-center gap-2 bg-slate-900 text-white px-4 py-2 rounded-xl font-bold hover:bg-slate-800 transition-colors">
-                <Lucide.FileSpreadsheet className="w-4 h-4" /> Export CoreTax (.xlsx)
+                <Lucide.FileText className="w-4 h-4" /> Export CoreTax (.xlsx)
               </button>
             </div>
             <div className="p-6">
