@@ -140,13 +140,20 @@ class Sale(db.Model):
     dpp = db.Column(db.Float, default=0.0)
     ppn = db.Column(db.Float, default=0.0)
     total_amount = db.Column(db.Float, default=0.0)
+    payment_status = db.Column(db.String(50), default='DP') # Piutang/Lunas
+    check_number = db.Column(db.String(50))
+    due_date = db.Column(db.DateTime, nullable=True)
+    paid_at = db.Column(db.DateTime, nullable=True)
 
     def to_dict(self):
         return {
             'id': self.id, 'date': self.date.isoformat() if self.date else None, 'customer_name': self.customer_name,
             'brand_name': self.brand_name, 'qty_zak': self.qty_zak, 'kg_per_zak': self.kg_per_zak,
             'total_kg': self.total_kg, 'price_per_kg': self.price_per_kg, 'dpp': self.dpp,
-            'ppn': self.ppn, 'total_amount': self.total_amount
+            'ppn': self.ppn, 'total_amount': self.total_amount,
+            'payment_status': self.payment_status, 'check_number': self.check_number,
+            'due_date': self.due_date.isoformat() if self.due_date else None,
+            'paid_at': self.paid_at.isoformat() if self.paid_at else None
         }
 
 class Expense(db.Model):
