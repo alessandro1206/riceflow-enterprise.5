@@ -18,6 +18,20 @@ routes_bp = Blueprint('routes', __name__)
 # ==========================================
 # STATE SYNC ENDPOINTS (For React App - Protected by JWT)
 # ==========================================
+@routes_bp.route('/api/migrate', methods=['GET'])
+def migrate_db():
+    try:
+        from sqlalchemy import text
+        db.session.execute(text("ALTER TABLE sale ADD COLUMN payment_status VARCHAR(50) DEFAULT 'DP'"))
+        db.session.execute(text("ALTER TABLE sale ADD COLUMN check_number VARCHAR(50)"))
+        db.session.execute(text("ALTER TABLE sale ADD COLUMN due_date DATETIME"))
+        db.session.execute(text("ALTER TABLE sale ADD COLUMN paid_at DATETIME"))
+        db.session.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)})
+
 @routes_bp.route('/api/state', methods=['GET'])
 @jwt_required()
 def get_state():
@@ -163,7 +177,8 @@ def handle_purchases():
             ppn=data.get('ppn', 0),
             total_amount=data.get('total_amount', 0),
             payment_status=data.get('payment_status', 'DP'),
-            check_number=data.get('check_number', '')
+            check_number=data.get('check_number', ''),
+            due_date=datetime.datetime.strptime(data.get('due_date'), '%Y-%m-%d') if data.get('due_date') else None
         )
         db.session.add(purchase)
         db.session.commit()
@@ -186,7 +201,10 @@ def handle_sales():
             price_per_kg=data.get('price_per_kg', 0),
             dpp=data.get('dpp', 0),
             ppn=data.get('ppn', 0),
-            total_amount=data.get('total_amount', 0)
+            total_amount=data.get('total_amount', 0),
+            payment_status=data.get('payment_status', 'DP'),
+            check_number=data.get('check_number', ''),
+            due_date=datetime.datetime.strptime(data.get('due_date'), '%Y-%m-%d') if data.get('due_date') else None
         )
         db.session.add(sale)
         db.session.commit()

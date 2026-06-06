@@ -858,8 +858,8 @@ const CoreFinancePanel = () => {
   const [loading, setLoading] = useState(true);
   const [savingExpense, setSavingExpense] = useState(false);
   const [expenseForm, setExpenseForm] = useState({ category: 'Maintenance Mesin', description: '', payment_type: 'Tunai', amount: '' });
-  const [purchaseForm, setPurchaseForm] = useState({ supplier: '', item: 'Beras Gabah', qty: '', price: '', payment_status: 'Lunas', transfer_date: new Date().toISOString().split('T')[0] });
-  const [saleForm, setSaleForm] = useState({ customer: '', brand: 'Beras Premium 25kg', qty: '', price: '', payment_status: 'Lunas', transfer_date: new Date().toISOString().split('T')[0] });
+  const [purchaseForm, setPurchaseForm] = useState({ supplier: '', item: 'Beras Gabah', qty: '', price: '', payment_status: 'DP', transfer_date: new Date().toISOString().split('T')[0], due_date: new Date(Date.now() + 86400000*7).toISOString().split('T')[0] });
+  const [saleForm, setSaleForm] = useState({ customer: '', brand: 'Beras Premium 25kg', qty: '', price: '', payment_status: 'DP', transfer_date: new Date().toISOString().split('T')[0], due_date: new Date(Date.now() + 86400000*7).toISOString().split('T')[0] });
 
   const h = { 'Authorization': `Bearer ${localStorage.getItem('jwt_token') || ''}`, 'Content-Type': 'application/json' };
 
@@ -907,11 +907,12 @@ const CoreFinancePanel = () => {
           price_per_kg: parseFloat(purchaseForm.price),
           total_amount: parseFloat(purchaseForm.qty) * parseFloat(purchaseForm.price),
           payment_status: purchaseForm.payment_status,
-          check_number: purchaseForm.payment_status === 'Lunas' ? `Trf: ${purchaseForm.transfer_date}` : ''
+          check_number: purchaseForm.payment_status === 'Lunas' ? `Trf: ${purchaseForm.transfer_date}` : '',
+          due_date: purchaseForm.payment_status === 'DP' ? purchaseForm.due_date : ''
         })
       });
       if (res.ok) {
-        setPurchaseForm({ supplier: '', item: 'Beras Gabah', qty: '', price: '', payment_status: 'Lunas', transfer_date: new Date().toISOString().split('T')[0] });
+        setPurchaseForm({ supplier: '', item: 'Beras Gabah', qty: '', price: '', payment_status: 'DP', transfer_date: new Date().toISOString().split('T')[0], due_date: new Date(Date.now() + 86400000*7).toISOString().split('T')[0] });
         fetchData();
       }
     } catch(e) { console.error(e); }
@@ -927,11 +928,13 @@ const CoreFinancePanel = () => {
           brand_name: saleForm.brand, 
           qty_zak: parseFloat(saleForm.qty), 
           total_amount: parseFloat(saleForm.qty) * parseFloat(saleForm.price),
-          check_number: saleForm.payment_status === 'Lunas' ? `Trf: ${saleForm.transfer_date}` : ''
+          payment_status: saleForm.payment_status,
+          check_number: saleForm.payment_status === 'Lunas' ? `Trf: ${saleForm.transfer_date}` : '',
+          due_date: saleForm.payment_status === 'DP' ? saleForm.due_date : ''
         })
       });
       if (res.ok) {
-        setSaleForm({ customer: '', brand: 'Beras Premium 25kg', qty: '', price: '', payment_status: 'Lunas', transfer_date: new Date().toISOString().split('T')[0] });
+        setSaleForm({ customer: '', brand: 'Beras Premium 25kg', qty: '', price: '', payment_status: 'DP', transfer_date: new Date().toISOString().split('T')[0], due_date: new Date(Date.now() + 86400000*7).toISOString().split('T')[0] });
         fetchData();
       }
     } catch(e) { console.error(e); }
@@ -1028,11 +1031,20 @@ const CoreFinancePanel = () => {
                   <option value="Lunas">Lunas</option>
                   <option value="DP">DP / Hutang</option>
                 </select>
-                {purchaseForm.payment_status === 'Lunas' && (
-                  <input type="date" value={purchaseForm.transfer_date} onChange={e => setPurchaseForm({...purchaseForm, transfer_date: e.target.value})} className="flex-1 p-3 border border-slate-200 rounded-xl font-bold" />
-                )}
               </div>
             </div>
+            {purchaseForm.payment_status === 'Lunas' && (
+              <div>
+                <label className="text-xs font-black text-slate-500 uppercase tracking-widest mb-1 block">Tgl Transfer Lunas</label>
+                <input type="date" value={purchaseForm.transfer_date} onChange={e => setPurchaseForm({...purchaseForm, transfer_date: e.target.value})} className="w-full p-3 border border-slate-200 rounded-xl font-bold" />
+              </div>
+            )}
+            {purchaseForm.payment_status === 'DP' && (
+              <div>
+                <label className="text-xs font-black text-slate-500 uppercase tracking-widest mb-1 block">Tgl Jatuh Tempo (Schedule)</label>
+                <input type="date" value={purchaseForm.due_date} onChange={e => setPurchaseForm({...purchaseForm, due_date: e.target.value})} className="w-full p-3 border border-amber-200 bg-amber-50 rounded-xl font-bold" />
+              </div>
+            )}
             <button onClick={handleAddPurchase} className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl transition-colors">SIMPAN PEMBELIAN</button>
           </div>
           <div className="lg:col-span-2 bg-white rounded-3xl shadow-sm border border-slate-200 overflow-x-auto">
@@ -1071,11 +1083,20 @@ const CoreFinancePanel = () => {
                   <option value="Lunas">Lunas</option>
                   <option value="Piutang">Piutang</option>
                 </select>
-                {saleForm.payment_status === 'Lunas' && (
-                  <input type="date" value={saleForm.transfer_date} onChange={e => setSaleForm({...saleForm, transfer_date: e.target.value})} className="flex-1 p-3 border border-slate-200 rounded-xl font-bold" />
-                )}
               </div>
             </div>
+            {saleForm.payment_status === 'Lunas' && (
+              <div>
+                <label className="text-xs font-black text-slate-500 uppercase tracking-widest mb-1 block">Tgl Terima Transfer</label>
+                <input type="date" value={saleForm.transfer_date} onChange={e => setSaleForm({...saleForm, transfer_date: e.target.value})} className="w-full p-3 border border-slate-200 rounded-xl font-bold" />
+              </div>
+            )}
+            {saleForm.payment_status === 'Piutang' && (
+              <div>
+                <label className="text-xs font-black text-slate-500 uppercase tracking-widest mb-1 block">Tgl Jatuh Tempo (Schedule)</label>
+                <input type="date" value={saleForm.due_date} onChange={e => setSaleForm({...saleForm, due_date: e.target.value})} className="w-full p-3 border border-amber-200 bg-amber-50 rounded-xl font-bold" />
+              </div>
+            )}
             <button onClick={handleAddSale} className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-xl transition-colors">SIMPAN PENJUALAN</button>
           </div>
           <div className="lg:col-span-2 bg-white rounded-3xl shadow-sm border border-slate-200 overflow-x-auto">
