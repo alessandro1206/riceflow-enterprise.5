@@ -870,9 +870,9 @@ const CoreFinancePanel = () => {
         fetch(`${API_BASE}/api/finance/sales`, { headers: h }),
         fetch(`${API_BASE}/api/finance/expenses`, { headers: h })
       ]);
-      if (pR.ok) setPurchases(await pR.json());
-      if (sR.ok) setSales(await sR.json());
-      if (eR.ok) setExpenses(await eR.json());
+      if (pR.ok) { const d = await pR.json(); setPurchases(Array.isArray(d) ? d : []); }
+      if (sR.ok) { const d = await sR.json(); setSales(Array.isArray(d) ? d : []); }
+      if (eR.ok) { const d = await eR.json(); setExpenses(Array.isArray(d) ? d : []); }
     } catch(e) { console.error(e); } finally { setLoading(false); }
   };
 
@@ -936,15 +936,19 @@ const CoreFinancePanel = () => {
     } catch(e) { console.error(e); }
   };
 
-  const totalPendapatan = (sales || []).reduce((a, s) => a + (s.total_amount || 0), 0);
-  const pembelianBeras = (purchases || []).filter(p => (p.item_name || '').toLowerCase().includes('beras')).reduce((a, p) => a + (p.total_amount || 0), 0);
-  const pembelianKemasan = (purchases || []).filter(p => (p.item_name || '').toLowerCase().includes('kemasan') || (p.item_name || '').toLowerCase().includes('zak')).reduce((a, p) => a + (p.total_amount || 0), 0);
-  const ongkosKuli = (expenses || []).filter(e => (e.category || '').toLowerCase().includes('kuli')).reduce((a, e) => a + (e.amount || 0), 0);
-  const ongkosTruk = (expenses || []).filter(e => (e.category || '').toLowerCase().includes('truk')).reduce((a, e) => a + (e.amount || 0), 0);
-  const biayaUtilitas = (expenses || []).filter(e => (e.category || '').toLowerCase().includes('pln') || (e.category || '').toLowerCase().includes('pdam')).reduce((a, e) => a + (e.amount || 0), 0);
+  const safeSales = Array.isArray(sales) ? sales : [];
+  const safePurchases = Array.isArray(purchases) ? purchases : [];
+  const safeExpenses = Array.isArray(expenses) ? expenses : [];
+
+  const totalPendapatan = safeSales.reduce((a, s) => a + (Number(s.total_amount) || 0), 0);
+  const pembelianBeras = safePurchases.filter(p => String(p.item_name || '').toLowerCase().includes('beras')).reduce((a, p) => a + (Number(p.total_amount) || 0), 0);
+  const pembelianKemasan = safePurchases.filter(p => String(p.item_name || '').toLowerCase().includes('kemasan') || String(p.item_name || '').toLowerCase().includes('zak')).reduce((a, p) => a + (Number(p.total_amount) || 0), 0);
+  const ongkosKuli = safeExpenses.filter(e => String(e.category || '').toLowerCase().includes('kuli')).reduce((a, e) => a + (Number(e.amount) || 0), 0);
+  const ongkosTruk = safeExpenses.filter(e => String(e.category || '').toLowerCase().includes('truk')).reduce((a, e) => a + (Number(e.amount) || 0), 0);
+  const biayaUtilitas = safeExpenses.filter(e => String(e.category || '').toLowerCase().includes('pln') || String(e.category || '').toLowerCase().includes('pdam')).reduce((a, e) => a + (Number(e.amount) || 0), 0);
   const totalHPP = pembelianBeras + pembelianKemasan + ongkosKuli + ongkosTruk + biayaUtilitas;
   const labaBruto = totalPendapatan - totalHPP;
-  const biayaOps = (expenses || []).filter(e => !(e.category || '').toLowerCase().includes('kuli') && !(e.category || '').toLowerCase().includes('truk') && !(e.category || '').toLowerCase().includes('pln') && !(e.category || '').toLowerCase().includes('pdam')).reduce((a, e) => a + (e.amount || 0), 0);
+  const biayaOps = safeExpenses.filter(e => !String(e.category || '').toLowerCase().includes('kuli') && !String(e.category || '').toLowerCase().includes('truk') && !String(e.category || '').toLowerCase().includes('pln') && !String(e.category || '').toLowerCase().includes('pdam')).reduce((a, e) => a + (Number(e.amount) || 0), 0);
   const labaBersih = labaBruto - biayaOps;
 
   if (loading) return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div></div>;
@@ -1032,7 +1036,7 @@ const CoreFinancePanel = () => {
           </div>
           <div className="lg:col-span-2 bg-white rounded-3xl shadow-sm border border-slate-200 overflow-x-auto">
             <table className="w-full text-sm text-left"><thead className="bg-slate-50 text-slate-500 font-bold"><tr><th className="px-6 py-4">Tanggal</th><th className="px-6 py-4">Supplier</th><th className="px-6 py-4">Barang</th><th className="px-6 py-4">Qty KG</th><th className="px-6 py-4">Status</th><th className="px-6 py-4 text-right">Total (Rp)</th></tr></thead>
-            <tbody className="divide-y divide-slate-100">{purchases.map((p, i) => (<tr key={i} className="hover:bg-slate-50"><td className="px-6 py-4 text-slate-600">{new Date(p.date).toLocaleDateString('id-ID')}</td><td className="px-6 py-4 font-bold">{p.supplier_name}</td><td className="px-6 py-4">{p.item_name}</td><td className="px-6 py-4">{p.qty_kg?.toLocaleString('id-ID')}</td><td className="px-6 py-4"><span className={`px-2 py-1 rounded-lg text-xs font-bold ${p.payment_status === 'Lunas' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>{p.payment_status}</span></td><td className="px-6 py-4 text-right font-mono font-bold">{p.total_amount?.toLocaleString('id-ID')}</td></tr>))}</tbody>
+            <tbody className="divide-y divide-slate-100">{safePurchases.map((p, i) => (<tr key={i} className="hover:bg-slate-50"><td className="px-6 py-4 text-slate-600">{new Date(p.date || Date.now()).toLocaleDateString('id-ID')}</td><td className="px-6 py-4 font-bold">{p.supplier_name || '-'}</td><td className="px-6 py-4">{p.item_name || '-'}</td><td className="px-6 py-4">{Number(p.qty_kg || 0).toLocaleString('id-ID')}</td><td className="px-6 py-4"><span className={`px-2 py-1 rounded-lg text-xs font-bold ${p.payment_status === 'Lunas' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>{p.payment_status || 'DP'}</span></td><td className="px-6 py-4 text-right font-mono font-bold">{Number(p.total_amount || 0).toLocaleString('id-ID')}</td></tr>))}</tbody>
             </table>
           </div>
         </div>
@@ -1075,7 +1079,7 @@ const CoreFinancePanel = () => {
           </div>
           <div className="lg:col-span-2 bg-white rounded-3xl shadow-sm border border-slate-200 overflow-x-auto">
             <table className="w-full text-sm text-left"><thead className="bg-slate-50 text-slate-500 font-bold"><tr><th className="px-6 py-4">Tanggal</th><th className="px-6 py-4">Customer</th><th className="px-6 py-4">Brand</th><th className="px-6 py-4">Qty Zak</th><th className="px-6 py-4 text-right">Total (Rp)</th></tr></thead>
-            <tbody className="divide-y divide-slate-100">{sales.map((s, i) => (<tr key={i} className="hover:bg-slate-50"><td className="px-6 py-4 text-slate-600">{new Date(s.date).toLocaleDateString('id-ID')}</td><td className="px-6 py-4 font-bold">{s.customer_name}</td><td className="px-6 py-4">{s.brand_name}</td><td className="px-6 py-4">{s.qty_zak}</td><td className="px-6 py-4 text-right font-mono font-bold">{s.total_amount?.toLocaleString('id-ID')}</td></tr>))}</tbody>
+            <tbody className="divide-y divide-slate-100">{safeSales.map((s, i) => (<tr key={i} className="hover:bg-slate-50"><td className="px-6 py-4 text-slate-600">{new Date(s.date || Date.now()).toLocaleDateString('id-ID')}</td><td className="px-6 py-4 font-bold">{s.customer_name || '-'}</td><td className="px-6 py-4">{s.brand_name || '-'}</td><td className="px-6 py-4">{s.qty_zak || 0}</td><td className="px-6 py-4 text-right font-mono font-bold">{Number(s.total_amount || 0).toLocaleString('id-ID')}</td></tr>))}</tbody>
             </table>
           </div>
         </div>
