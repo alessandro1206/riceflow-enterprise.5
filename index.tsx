@@ -855,6 +855,7 @@ const CoreFinancePanel = () => {
   const [purchases, setPurchases] = useState<any[]>([]);
   const [sales, setSales] = useState<any[]>([]);
   const [expenses, setExpenses] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [savingExpense, setSavingExpense] = useState(false);
   const [expenseForm, setExpenseForm] = useState({ category: 'Maintenance Mesin', description: '', payment_type: 'Tunai', amount: '' });
   const [purchaseForm, setPurchaseForm] = useState({ supplier: '', item: 'Beras Gabah', qty: '', price: '', payment_status: 'Lunas', transfer_date: new Date().toISOString().split('T')[0] });
