@@ -855,9 +855,10 @@ const CoreFinancePanel = () => {
   const [purchases, setPurchases] = useState<any[]>([]);
   const [sales, setSales] = useState<any[]>([]);
   const [expenses, setExpenses] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
   const [savingExpense, setSavingExpense] = useState(false);
   const [expenseForm, setExpenseForm] = useState({ category: 'Maintenance Mesin', description: '', payment_type: 'Tunai', amount: '' });
+  const [purchaseForm, setPurchaseForm] = useState({ supplier: '', item: 'Beras Gabah', qty: '', price: '', payment_status: 'Lunas', transfer_date: new Date().toISOString().split('T')[0] });
+  const [saleForm, setSaleForm] = useState({ customer: '', brand: 'Beras Premium 25kg', qty: '', price: '', payment_status: 'Lunas', transfer_date: new Date().toISOString().split('T')[0] });
 
   const h = { 'Authorization': `Bearer ${localStorage.getItem('jwt_token') || ''}`, 'Content-Type': 'application/json' };
 
@@ -891,6 +892,48 @@ const CoreFinancePanel = () => {
       }
     } catch(e) { console.error(e); }
     setSavingExpense(false);
+  };
+
+  const handleAddPurchase = async () => {
+    if (!purchaseForm.supplier || !purchaseForm.qty || !purchaseForm.price) return alert('Mohon isi supplier, qty, dan harga.');
+    try {
+      const res = await fetch(`${API_BASE}/api/finance/purchases`, {
+        method: 'POST', headers: h,
+        body: JSON.stringify({ 
+          supplier_name: purchaseForm.supplier, 
+          item_name: purchaseForm.item, 
+          qty_kg: parseFloat(purchaseForm.qty), 
+          price_per_kg: parseFloat(purchaseForm.price),
+          total_amount: parseFloat(purchaseForm.qty) * parseFloat(purchaseForm.price),
+          payment_status: purchaseForm.payment_status,
+          check_number: purchaseForm.payment_status === 'Lunas' ? `Trf: ${purchaseForm.transfer_date}` : ''
+        })
+      });
+      if (res.ok) {
+        setPurchaseForm({ supplier: '', item: 'Beras Gabah', qty: '', price: '', payment_status: 'Lunas', transfer_date: new Date().toISOString().split('T')[0] });
+        fetchData();
+      }
+    } catch(e) { console.error(e); }
+  };
+
+  const handleAddSale = async () => {
+    if (!saleForm.customer || !saleForm.qty || !saleForm.price) return alert('Mohon isi customer, qty, dan harga.');
+    try {
+      const res = await fetch(`${API_BASE}/api/finance/sales`, {
+        method: 'POST', headers: h,
+        body: JSON.stringify({ 
+          customer_name: saleForm.customer, 
+          brand_name: saleForm.brand, 
+          qty_zak: parseFloat(saleForm.qty), 
+          total_amount: parseFloat(saleForm.qty) * parseFloat(saleForm.price),
+          check_number: saleForm.payment_status === 'Lunas' ? `Trf: ${saleForm.transfer_date}` : ''
+        })
+      });
+      if (res.ok) {
+        setSaleForm({ customer: '', brand: 'Beras Premium 25kg', qty: '', price: '', payment_status: 'Lunas', transfer_date: new Date().toISOString().split('T')[0] });
+        fetchData();
+      }
+    } catch(e) { console.error(e); }
   };
 
   const totalPendapatan = sales.reduce((a, s) => a + (s.total_amount || 0), 0);
@@ -952,17 +995,89 @@ const CoreFinancePanel = () => {
         </div>
       )}
       {tab === 'pembelian' && (
-        <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-x-auto">
-          <table className="w-full text-sm text-left"><thead className="bg-slate-50 text-slate-500 font-bold"><tr><th className="px-6 py-4">Tanggal</th><th className="px-6 py-4">Supplier</th><th className="px-6 py-4">Barang</th><th className="px-6 py-4">Qty KG</th><th className="px-6 py-4">Status</th><th className="px-6 py-4 text-right">Total (Rp)</th></tr></thead>
-          <tbody className="divide-y divide-slate-100">{purchases.map((p, i) => (<tr key={i} className="hover:bg-slate-50"><td className="px-6 py-4 text-slate-600">{new Date(p.date).toLocaleDateString('id-ID')}</td><td className="px-6 py-4 font-bold">{p.supplier_name}</td><td className="px-6 py-4">{p.item_name}</td><td className="px-6 py-4">{p.qty_kg?.toLocaleString('id-ID')}</td><td className="px-6 py-4"><span className={`px-2 py-1 rounded-lg text-xs font-bold ${p.payment_status === 'Lunas' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>{p.payment_status}</span></td><td className="px-6 py-4 text-right font-mono font-bold">{p.total_amount?.toLocaleString('id-ID')}</td></tr>))}</tbody>
-          </table>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 space-y-4 h-fit">
+            <h3 className="font-black text-slate-800 flex items-center gap-2"><Lucide.PlusCircle className="w-5 h-5 text-emerald-500" /> Input Pembelian</h3>
+            <div>
+              <label className="text-xs font-black text-slate-500 uppercase tracking-widest mb-1 block">Supplier / Petani</label>
+              <input value={purchaseForm.supplier} onChange={e => setPurchaseForm({...purchaseForm, supplier: e.target.value})} placeholder="Nama Supplier" className="w-full p-3 border border-slate-200 rounded-xl font-bold" />
+            </div>
+            <div>
+              <label className="text-xs font-black text-slate-500 uppercase tracking-widest mb-1 block">Barang</label>
+              <input value={purchaseForm.item} onChange={e => setPurchaseForm({...purchaseForm, item: e.target.value})} className="w-full p-3 border border-slate-200 rounded-xl font-bold" />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-xs font-black text-slate-500 uppercase tracking-widest mb-1 block">Qty (KG)</label>
+                <input type="number" value={purchaseForm.qty} onChange={e => setPurchaseForm({...purchaseForm, qty: e.target.value})} placeholder="0" className="w-full p-3 border border-slate-200 rounded-xl font-bold" />
+              </div>
+              <div>
+                <label className="text-xs font-black text-slate-500 uppercase tracking-widest mb-1 block">Harga / KG</label>
+                <input type="number" value={purchaseForm.price} onChange={e => setPurchaseForm({...purchaseForm, price: e.target.value})} placeholder="Rp" className="w-full p-3 border border-slate-200 rounded-xl font-bold" />
+              </div>
+            </div>
+            <div>
+              <label className="text-xs font-black text-slate-500 uppercase tracking-widest mb-1 block">Status Pembayaran</label>
+              <div className="flex gap-2">
+                <select value={purchaseForm.payment_status} onChange={e => setPurchaseForm({...purchaseForm, payment_status: e.target.value})} className="flex-1 p-3 border border-slate-200 rounded-xl font-bold">
+                  <option value="Lunas">Lunas</option>
+                  <option value="DP">DP / Hutang</option>
+                </select>
+                {purchaseForm.payment_status === 'Lunas' && (
+                  <input type="date" value={purchaseForm.transfer_date} onChange={e => setPurchaseForm({...purchaseForm, transfer_date: e.target.value})} className="flex-1 p-3 border border-slate-200 rounded-xl font-bold" />
+                )}
+              </div>
+            </div>
+            <button onClick={handleAddPurchase} className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl transition-colors">SIMPAN PEMBELIAN</button>
+          </div>
+          <div className="lg:col-span-2 bg-white rounded-3xl shadow-sm border border-slate-200 overflow-x-auto">
+            <table className="w-full text-sm text-left"><thead className="bg-slate-50 text-slate-500 font-bold"><tr><th className="px-6 py-4">Tanggal</th><th className="px-6 py-4">Supplier</th><th className="px-6 py-4">Barang</th><th className="px-6 py-4">Qty KG</th><th className="px-6 py-4">Status</th><th className="px-6 py-4 text-right">Total (Rp)</th></tr></thead>
+            <tbody className="divide-y divide-slate-100">{purchases.map((p, i) => (<tr key={i} className="hover:bg-slate-50"><td className="px-6 py-4 text-slate-600">{new Date(p.date).toLocaleDateString('id-ID')}</td><td className="px-6 py-4 font-bold">{p.supplier_name}</td><td className="px-6 py-4">{p.item_name}</td><td className="px-6 py-4">{p.qty_kg?.toLocaleString('id-ID')}</td><td className="px-6 py-4"><span className={`px-2 py-1 rounded-lg text-xs font-bold ${p.payment_status === 'Lunas' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>{p.payment_status}</span></td><td className="px-6 py-4 text-right font-mono font-bold">{p.total_amount?.toLocaleString('id-ID')}</td></tr>))}</tbody>
+            </table>
+          </div>
         </div>
       )}
       {tab === 'penjualan' && (
-        <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-x-auto">
-          <table className="w-full text-sm text-left"><thead className="bg-slate-50 text-slate-500 font-bold"><tr><th className="px-6 py-4">Tanggal</th><th className="px-6 py-4">Customer</th><th className="px-6 py-4">Brand</th><th className="px-6 py-4">Qty Zak</th><th className="px-6 py-4 text-right">Total (Rp)</th></tr></thead>
-          <tbody className="divide-y divide-slate-100">{sales.map((s, i) => (<tr key={i} className="hover:bg-slate-50"><td className="px-6 py-4 text-slate-600">{new Date(s.date).toLocaleDateString('id-ID')}</td><td className="px-6 py-4 font-bold">{s.customer_name}</td><td className="px-6 py-4">{s.brand_name}</td><td className="px-6 py-4">{s.qty_zak}</td><td className="px-6 py-4 text-right font-mono font-bold">{s.total_amount?.toLocaleString('id-ID')}</td></tr>))}</tbody>
-          </table>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 space-y-4 h-fit">
+            <h3 className="font-black text-slate-800 flex items-center gap-2"><Lucide.PlusCircle className="w-5 h-5 text-indigo-500" /> Input Penjualan</h3>
+            <div>
+              <label className="text-xs font-black text-slate-500 uppercase tracking-widest mb-1 block">Customer</label>
+              <input value={saleForm.customer} onChange={e => setSaleForm({...saleForm, customer: e.target.value})} placeholder="Nama Customer" className="w-full p-3 border border-slate-200 rounded-xl font-bold" />
+            </div>
+            <div>
+              <label className="text-xs font-black text-slate-500 uppercase tracking-widest mb-1 block">Brand / Barang</label>
+              <input value={saleForm.brand} onChange={e => setSaleForm({...saleForm, brand: e.target.value})} className="w-full p-3 border border-slate-200 rounded-xl font-bold" />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-xs font-black text-slate-500 uppercase tracking-widest mb-1 block">Qty (Zak)</label>
+                <input type="number" value={saleForm.qty} onChange={e => setSaleForm({...saleForm, qty: e.target.value})} placeholder="0" className="w-full p-3 border border-slate-200 rounded-xl font-bold" />
+              </div>
+              <div>
+                <label className="text-xs font-black text-slate-500 uppercase tracking-widest mb-1 block">Harga / Zak</label>
+                <input type="number" value={saleForm.price} onChange={e => setSaleForm({...saleForm, price: e.target.value})} placeholder="Rp" className="w-full p-3 border border-slate-200 rounded-xl font-bold" />
+              </div>
+            </div>
+            <div>
+              <label className="text-xs font-black text-slate-500 uppercase tracking-widest mb-1 block">Status Pembayaran</label>
+              <div className="flex gap-2">
+                <select value={saleForm.payment_status} onChange={e => setSaleForm({...saleForm, payment_status: e.target.value})} className="flex-1 p-3 border border-slate-200 rounded-xl font-bold">
+                  <option value="Lunas">Lunas</option>
+                  <option value="Piutang">Piutang</option>
+                </select>
+                {saleForm.payment_status === 'Lunas' && (
+                  <input type="date" value={saleForm.transfer_date} onChange={e => setSaleForm({...saleForm, transfer_date: e.target.value})} className="flex-1 p-3 border border-slate-200 rounded-xl font-bold" />
+                )}
+              </div>
+            </div>
+            <button onClick={handleAddSale} className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-xl transition-colors">SIMPAN PENJUALAN</button>
+          </div>
+          <div className="lg:col-span-2 bg-white rounded-3xl shadow-sm border border-slate-200 overflow-x-auto">
+            <table className="w-full text-sm text-left"><thead className="bg-slate-50 text-slate-500 font-bold"><tr><th className="px-6 py-4">Tanggal</th><th className="px-6 py-4">Customer</th><th className="px-6 py-4">Brand</th><th className="px-6 py-4">Qty Zak</th><th className="px-6 py-4 text-right">Total (Rp)</th></tr></thead>
+            <tbody className="divide-y divide-slate-100">{sales.map((s, i) => (<tr key={i} className="hover:bg-slate-50"><td className="px-6 py-4 text-slate-600">{new Date(s.date).toLocaleDateString('id-ID')}</td><td className="px-6 py-4 font-bold">{s.customer_name}</td><td className="px-6 py-4">{s.brand_name}</td><td className="px-6 py-4">{s.qty_zak}</td><td className="px-6 py-4 text-right font-mono font-bold">{s.total_amount?.toLocaleString('id-ID')}</td></tr>))}</tbody>
+            </table>
+          </div>
         </div>
       )}
       {tab === 'biaya' && (
